@@ -14,7 +14,61 @@
 <meta name="apple-mobile-web-app-title" content="FlowFinance">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<!-- SVG Icons (inline — ไม่พึ่ง CDN) -->
+<style>
+.ti{display:inline-flex;align-items:center;justify-content:center;width:1em;height:1em;font-size:inherit;vertical-align:-0.125em}
+.ti svg{width:1em;height:1em;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none}
+</style>
+<script>
+// SVG icon map
+var _ICONS = {
+  'layout-dashboard':'<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',
+  'list':'<line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="5" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="5" cy="18" r="1" fill="currentColor" stroke="none"/>',
+  'target':'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/>',
+  'piggy-bank':'<path d="M16 10a4 4 0 0 0 -8 0"/><path d="M4 10c0 4.418 3.582 8 8 8s8-3.582 8-8"/><path d="M20 10h1a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-1"/><path d="M7 14l-2 2"/><path d="M14 6l1 -3h2"/><line x1="14" y1="6" x2="10" y2="6"/>',
+  'chart-line':'<polyline points="4 19 8 13 12 15 16 10 20 14"/><line x1="4" y1="19" x2="20" y2="19"/>',
+  'scale':'<line x1="12" y1="3" x2="12" y2="21"/><path d="M6 9l6 -6l6 6"/><path d="M3 18l3 -9l3 9"/><path d="M15 18l3 -9l3 9"/><line x1="3" y1="18" x2="9" y2="18"/><line x1="15" y1="18" x2="21" y2="18"/>',
+  'settings':'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  'plus':'<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+  'moon':'<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
+  'sun':'<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>',
+  'refresh':'<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
+  'chevron-down':'<polyline points="6 9 12 15 18 9"/>',
+  'calendar':'<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+  'calendar-due':'<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="17"/><circle cx="12" cy="19" r="0.5" fill="currentColor"/>',
+  'circle':'<circle cx="12" cy="12" r="9"/>',
+  'pencil':'<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>',
+  'trash':'<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>',
+  'copy':'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  'edit':'<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>',
+  'x':'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+  'download':'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+  'file-spreadsheet':'<path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/><line x1="8" y1="11" x2="16" y2="11"/><line x1="8" y1="15" x2="16" y2="15"/><line x1="11" y1="11" x2="11" y2="19"/>',
+  'printer':'<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
+  'info-circle':'<circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r="0.5" fill="currentColor"/>'
+};
+// Replace all <i class="ti ti-NAME"> with inline SVG
+document.addEventListener('DOMContentLoaded', function() {
+  renderIcons(document.body);
+});
+// Also expose for dynamic content
+window.renderIcons = function(root) {
+  (root||document.body).querySelectorAll('i.ti').forEach(function(el) {
+    var cls = el.className;
+    var match = cls.match(/ti-([a-z0-9\-]+)/);
+    if (!match) return;
+    var name = match[1];
+    var path = _ICONS[name];
+    if (!path) return;
+    var svg = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' + path + '</svg>';
+    var span = document.createElement('span');
+    span.className = 'ti';
+    span.style.cssText = el.style.cssText;
+    span.innerHTML = svg;
+    el.parentNode.replaceChild(span, el);
+  });
+};
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <!-- Firebase SDK -->
 <script type="module">
@@ -121,7 +175,8 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg0);color:
 .topnav::-webkit-scrollbar{display:none}
 .logo{font-size:15px;font-weight:700;color:var(--t1);white-space:nowrap;padding-right:12px;border-right:.5px solid var(--bdr);margin-right:8px;flex-shrink:0}
 .logo em{color:#1D9E75;font-style:normal}
-.ni{display:flex;align-items:center;gap:5px;padding:6px 12px;font-size:12px;font-weight:500;color:var(--t2);cursor:pointer;border-radius:var(--r);white-space:nowrap;flex-shrink:0;border-bottom:2px solid transparent;transition:all .15s;user-select:none}
+.ni{display:flex;align-items:center;gap:5px;padding:6px 12px;font-size:12px;font-weight:500;color:var(--t2);cursor:pointer;border-radius:var(--r);white-space:nowrap;flex-shrink:0;border-bottom:2px solid transparent;transition:all .15s;user-select:none;min-width:max-content}
+.ni i{font-size:14px;flex-shrink:0}
 .ni:hover{background:var(--bg2);color:var(--t1)}
 .ni.on{color:#1D9E75;font-weight:600;background:rgba(29,158,117,.1);border-bottom-color:#1D9E75}
 .nav-right{margin-left:auto;display:flex;align-items:center;gap:6px;flex-shrink:0;padding-left:8px}
@@ -1842,9 +1897,11 @@ function setTxV(v,el){
     el2.innerHTML=days.map(function(dt){var ts=g[dt];var net=ts.reduce(function(s,t){return s+(t.tp==='income'?t.amt:t.tp==='expense'?-t.amt:0);},0);var nc=net>=0?'#1D9E75':'#D85A30';var id='txd-'+dt.replace(/-/g,'');return'<div class="day-group"><div class="day-hd" data-id="'+id+'"><span class="day-dt">'+fmtD(dt)+'</span><span style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:700;color:'+nc+'">'+(net>=0?'+':'')+f(net)+'</span><span style="display:inline-block;transition:transform .2s" id="ch-'+id+'">&#9660;</span></span></div><div class="day-txs open" id="'+id+'">'+ts.map(function(t){return txRow(t);}).join('')+'</div></div>';}).join('');
     el2.querySelectorAll('.day-hd').forEach(function(hd){hd.addEventListener('click',function(){togDay(this.getAttribute('data-id'));});});
     attachTxEvents(el2);
+    renderIcons(el2);
   }else{
     el2.innerHTML='<div style="background:var(--bg1);border-radius:var(--rl);border:.5px solid var(--bdr);overflow:hidden">'+txs.slice().sort(function(a,b){return b.dt.localeCompare(a.dt);}).map(function(t){return txRow(t,true);}).join('')+'</div>';
     attachTxEvents(el2);
+    renderIcons(el2);
   }
 }
 function txRow(t,showDate){return'<div class="txi" data-txid="'+t.id+'"><div class="txic" style="background:'+BG[t.tp]+'"><i class="ti ti-circle" style="color:'+COL[t.tp]+'"></i></div><div class="txin"><div class="txn1">'+esc(t.note||t.cat)+(t.rec?'<span class="rec-badge">ประจำ</span>':'')+'</div><div class="txn2">'+esc(t.cat)+(showDate?' · '+t.dt:'')+'</div></div><div class="txa" style="color:'+COL[t.tp]+'">'+(t.tp==='income'?'+':t.tp==='expense'?'-':'')+f(t.amt)+'</div><button class="tx-del-btn" data-txid="'+t.id+'" onclick="quickDelTx(event,\''+t.id+'\')"><i class="ti ti-trash"></i></button></div>';}
@@ -2043,6 +2100,7 @@ function rdDB(){
   el.innerHTML=days.map(function(dt){var ts=g[dt];var net=ts.reduce(function(s,t){return s+(t.tp==='income'?t.amt:t.tp==='expense'?-t.amt:0);},0);var nc=net>=0?'#1D9E75':'#D85A30';var id='db-d-'+dt.replace(/-/g,'');return'<div class="day-group"><div class="day-hd" data-id="'+id+'"><span class="day-dt">'+fmtD(dt)+'</span><span style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:700;color:'+nc+'">'+(net>=0?'+':'')+f(net)+'</span><span style="display:inline-block;transition:transform .2s" id="ch-'+id+'">&#9660;</span></span></div><div class="day-txs" id="'+id+'">'+ts.map(function(t){return txRow(t);}).join('')+'</div></div>';}).join('');
   el.querySelectorAll('.day-hd').forEach(function(hd){hd.addEventListener('click',function(){togDay(this.getAttribute('data-id'));});});
   attachTxEvents(el);
+  renderIcons(el);
 }
 
 // ====== EXPORTS ======
