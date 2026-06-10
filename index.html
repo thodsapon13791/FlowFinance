@@ -438,6 +438,25 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg0);color:
 .bud-tbl{width:100%;border-collapse:collapse;font-size:12px}
 .bud-tbl th{padding:7px 10px;text-align:left;color:var(--t2);font-size:10px;font-weight:600;border-bottom:.5px solid var(--bdr);white-space:nowrap}
 .bud-tbl td{padding:7px 10px;border-bottom:.5px solid var(--bdr);color:var(--t1)}
+/* Sticky first col in budget table */
+.bud-tbl td:first-child,.bud-tbl th:first-child{position:sticky;left:0;background:var(--bg1);z-index:1;font-weight:600;box-shadow:1px 0 0 var(--bdr)}
+/* Quick Amount buttons */
+.qamt-btn{padding:4px 10px;font-size:11px;font-weight:600;border:1px solid var(--bdr);border-radius:20px;background:var(--bg2);color:var(--t2);cursor:pointer;transition:all .15s}
+.qamt-btn:hover,.qamt-btn:active{background:#1D9E75;color:#fff;border-color:#1D9E75}
+/* Empty state */
+.empty-state{text-align:center;padding:40px 20px;color:var(--t3)}
+.empty-state-icon{font-size:40px;margin-bottom:10px}
+.empty-state-title{font-size:14px;font-weight:600;color:var(--t2);margin-bottom:6px}
+.empty-state-sub{font-size:12px;color:var(--t3);line-height:1.6}
+/* Color picker */
+.color-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.color-dot{width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s;flex-shrink:0}
+.color-dot.sel{outline:2px solid #fff;outline-offset:1px;box-shadow:0 0 0 3px var(--bdr)}
+/* Summary bar in tx page */
+.tx-summary{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.tx-sum-item{flex:1;min-width:90px;background:var(--bg1);border:.5px solid var(--bdr);border-radius:var(--r);padding:8px 12px}
+.tx-sum-lbl{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+.tx-sum-val{font-size:14px;font-weight:700}
 .bud-c{cursor:pointer;color:#1D9E75;font-weight:600}
 .bud-c:hover{background:var(--bg2)}
 .sp-ov{color:#D85A30;font-weight:600}
@@ -607,7 +626,17 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg0);color:
   <div class="modal">
     <h2 id="m-title">บันทึกรายการ</h2>
     <div class="trow"><button class="tbx ti" id="tb0" onclick="setT('income')">รายรับ</button><button class="tbx" id="tb1" onclick="setT('savings')">ออม</button><button class="tbx" id="tb2" onclick="setT('invest')">ลงทุน</button><button class="tbx" id="tb3" onclick="setT('expense')">รายจ่าย</button></div>
-    <div class="fg"><label>จำนวน (฿)</label><input type="number" id="iamt" placeholder="0" inputmode="decimal"></div>
+    <div class="fg"><label>จำนวน (฿)</label>
+      <input type="number" id="iamt" placeholder="0" inputmode="decimal">
+      <div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap">
+        <button type="button" class="qamt-btn" onclick="setAmt(50)">50</button>
+        <button type="button" class="qamt-btn" onclick="setAmt(100)">100</button>
+        <button type="button" class="qamt-btn" onclick="setAmt(200)">200</button>
+        <button type="button" class="qamt-btn" onclick="setAmt(500)">500</button>
+        <button type="button" class="qamt-btn" onclick="setAmt(1000)">1,000</button>
+        <button type="button" class="qamt-btn" onclick="setAmt(5000)">5,000</button>
+      </div>
+    </div>
     <div class="fg"><label>หมวด</label><div class="cat-row"><select id="icat"></select><button class="btn-mg" onclick="togCB()"><i class="ti ti-settings"></i></button></div><div class="cat-box" id="cat-box"><div class="cat-list" id="cat-chips"></div><div class="cat-add"><input type="text" id="nci" placeholder="หมวดใหม่"><button onclick="addCat()">+</button></div></div></div>
     <div class="fg"><label>รายละเอียด</label><input type="text" id="inote" placeholder="เช่น ข้าวมันไก่"></div>
     <div class="fg"><label>วันที่</label><input type="date" id="idate"></div>
@@ -617,7 +646,27 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg0);color:
 </div>
 <!-- Goal modal -->
 <div class="mwrap" id="gmw" onclick="if(event.target===this)closeGM()">
-  <div class="modal"><h2 id="gm-t">เพิ่มเป้าหมาย</h2><div class="fg"><label>ชื่อ</label><input type="text" id="g-name"></div><div class="fg"><label>เป้าหมาย (฿)</label><input type="number" id="g-tg" inputmode="decimal"></div><div class="fg"><label>ยอดตั้งต้น (฿)</label><input type="number" id="g-base" inputmode="decimal"></div><div class="fg"><label>เชื่อมหมวด</label><select id="g-link"><option value="">ไม่เชื่อม</option><option value="savings">ออม</option><option value="invest">ลงทุน</option></select></div><div class="fg"><label>เก็บต่อเดือน (฿)</label><input type="number" id="g-mo" inputmode="decimal"></div><div class="mact"><button class="bcan" onclick="closeGM()">ยกเลิก</button><button class="bsav" onclick="saveGoal()">บันทึก</button></div></div>
+  <div class="modal"><h2 id="gm-t">เพิ่มเป้าหมาย</h2>
+    <div class="fg"><label>ชื่อ</label><input type="text" id="g-name"></div>
+    <div class="fg"><label>เป้าหมาย (฿)</label><input type="number" id="g-tg" inputmode="decimal"></div>
+    <div class="fg"><label>ยอดตั้งต้น (฿)</label><input type="number" id="g-base" inputmode="decimal"></div>
+    <div class="fg"><label>เชื่อมหมวด</label><select id="g-link"><option value="">ไม่เชื่อม</option><option value="savings">ออม</option><option value="invest">ลงทุน</option></select></div>
+    <div class="fg"><label>เก็บต่อเดือน (฿)</label><input type="number" id="g-mo" inputmode="decimal"></div>
+    <div class="fg"><label>สี</label>
+      <div class="color-row" id="g-colors">
+        <div class="color-dot sel" data-col="#1D9E75" style="background:#1D9E75" onclick="selGoalCol(this)"></div>
+        <div class="color-dot" data-col="#378ADD" style="background:#378ADD" onclick="selGoalCol(this)"></div>
+        <div class="color-dot" data-col="#7F77DD" style="background:#7F77DD" onclick="selGoalCol(this)"></div>
+        <div class="color-dot" data-col="#EF9F27" style="background:#EF9F27" onclick="selGoalCol(this)"></div>
+        <div class="color-dot" data-col="#D85A30" style="background:#D85A30" onclick="selGoalCol(this)"></div>
+        <div class="color-dot" data-col="#D4537E" style="background:#D4537E" onclick="selGoalCol(this)"></div>
+        <div class="color-dot" data-col="#639922" style="background:#639922" onclick="selGoalCol(this)"></div>
+        <div class="color-dot" data-col="#888780" style="background:#888780" onclick="selGoalCol(this)"></div>
+      </div>
+      <input type="hidden" id="g-col" value="#1D9E75">
+    </div>
+    <div class="mact"><button class="bcan" onclick="closeGM()">ยกเลิก</button><button class="bsav" onclick="saveGoal()">บันทึก</button></div>
+  </div>
 </div>
 <!-- Budget modal -->
 <div class="mwrap" id="budm" onclick="if(event.target===this)closeBudM()">
@@ -686,6 +735,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg0);color:
 <!-- TRANSACTIONS -->
 <div id="pg-tx" class="pg">
   <div class="topbar"><div><h1>รายการ</h1></div><div style="display:flex;gap:6px"><button class="btn-sm-g" onclick="exportAllExcel()"><i class="ti ti-file-spreadsheet"></i> Export</button><button class="btn-add" onclick="openM()"><i class="ti ti-plus"></i> เพิ่ม</button></div></div>
+  <div class="tx-summary" id="tx-summary"></div>
   <div class="srchbar">
     <input type="text" id="tx-srch" placeholder="&#128269; ค้นหารายการ..." oninput="setTxV(txV,null)">
     <select id="tx-ftype" onchange="setTxV(txV,null)">
@@ -905,30 +955,61 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg0);color:
 <!-- SETTINGS -->
 <div id="pg-set" class="pg">
   <div class="topbar"><div><h1>ตั้งค่า</h1></div></div>
+
+  <!-- บัญชีผู้ใช้ -->
   <div class="card">
+    <div style="font-size:12px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:.75rem">บัญชีผู้ใช้</div>
+    <div class="set-row">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div id="set-av" style="width:38px;height:38px;border-radius:50%;background:#1D9E75;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0">?</div>
+        <div>
+          <div class="set-label" id="set-uname">กำลังโหลด...</div>
+          <div class="set-sub" id="set-uemail" style="color:var(--t3)"></div>
+        </div>
+      </div>
+      <button class="sign-out-btn" onclick="signOut()">ออกจากระบบ</button>
+    </div>
+  </div>
+
+  <!-- โปรไฟล์ -->
+  <div class="card" style="margin-top:10px">
     <div style="font-size:12px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:.75rem">โปรไฟล์</div>
     <div class="set-row"><div><div class="set-label">ชื่อ</div></div><input type="text" id="set-name" style="font-size:12px;padding:5px 8px;border:.5px solid var(--bdr);border-radius:var(--r);background:var(--bg2);color:var(--t1);width:140px" placeholder="ชื่อของคุณ" oninput="saveName()"></div>
     <div class="set-row"><div><div class="set-label">เงินเดือน / รายรับ</div><div class="set-sub" id="sal-lbl">-</div></div><button class="btn-ep" onclick="openSalM()"><i class="ti ti-edit"></i> แก้ไข</button></div>
     <div class="set-row"><div><div class="set-label">วันเงินเดือนเข้า</div></div><button class="btn-ep" onclick="openEP()"><i class="ti ti-edit"></i> แก้ไข</button></div>
   </div>
+
+  <!-- การแสดงผล -->
   <div class="card" style="margin-top:10px">
     <div style="font-size:12px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:.75rem">การแสดงผล</div>
     <div class="set-row"><div><div class="set-label">โหมดสี</div></div><div class="togwrap"><button class="togopt on" id="set-dk" onclick="setTheme('dark')"><i class="ti ti-moon"></i> มืด</button><button class="togopt" id="set-lt" onclick="setTheme('light')"><i class="ti ti-sun"></i> สว่าง</button></div></div>
   </div>
+
+  <!-- จัดการหมวดหมู่ -->
   <div class="card" style="margin-top:10px">
     <div style="font-size:12px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:.75rem">จัดการหมวดหมู่</div>
     <div class="cat-list" id="set-chips" style="margin-bottom:8px"></div>
     <div class="cat-add"><input type="text" id="set-nc" placeholder="หมวดใหม่"><button onclick="addCatSet()">+ เพิ่ม</button></div>
   </div>
+
+  <!-- ข้อมูล -->
   <div class="card" style="margin-top:10px">
     <div style="font-size:12px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:.75rem">ข้อมูล</div>
     <div class="set-row"><div><div class="set-label">Export ข้อมูลทั้งหมด</div><div class="set-sub">CSV ทุกรายการ</div></div><button class="btn-sm-g" onclick="exportAllExcel()"><i class="ti ti-file-spreadsheet"></i> Export</button></div>
     <div class="set-row"><div><div class="set-label">Export รายงาน HTML</div><div class="set-sub">ไฟล์สำหรับบันทึก</div></div><button class="btn-sm-r" onclick="exportHTML()"><i class="ti ti-download"></i> Download</button></div>
-    <div class="set-row"><div><div class="set-label">ล้างข้อมูลทั้งหมด</div><div class="set-sub" style="color:#D85A30">ลบรายการทั้งหมดออก ไม่สามารถกู้คืนได้</div></div><button onclick="clearAllData()" style="padding:5px 10px;font-size:11px;border-radius:var(--r);background:#D85A30;color:#fff;border:none;cursor:pointer">ล้างข้อมูล</button></div>
+    <div class="set-row" style="border-top:1px solid var(--bdr);margin-top:8px;padding-top:12px">
+      <div>
+        <div class="set-label" style="color:#D85A30">ล้างข้อมูลทั้งหมด</div>
+        <div class="set-sub" style="color:var(--t3)">ลบรายการทั้งหมดออก ไม่สามารถกู้คืนได้</div>
+      </div>
+      <button onclick="confirmClearAll()" style="padding:6px 12px;font-size:12px;border-radius:var(--r);background:transparent;color:#D85A30;border:1px solid #D85A30;cursor:pointer;font-weight:600">🗑 ล้างข้อมูล</button>
+    </div>
   </div>
-  <div class="card" style="margin-top:10px">
+
+  <!-- เกี่ยวกับ -->
+  <div class="card" style="margin-top:10px;margin-bottom:20px">
     <div style="font-size:12px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:.75rem">เกี่ยวกับ</div>
-    <div class="set-row"><div><div class="set-label">FlowFinance v10.0</div><div style="font-size:11px;color:var(--t3);margin-top:2px">Personal Finance App — THB · บันทึกข้อมูลใน localStorage</div></div></div>
+    <div class="set-row"><div><div class="set-label">FlowFinance v25</div><div style="font-size:11px;color:var(--t3);margin-top:2px">Personal Finance App — THB · Firebase Cloud Sync</div></div></div>
   </div>
 </div>
 </div></div>
@@ -937,8 +1018,8 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg0);color:
   <div class="bni on" onclick="goP('db',this)"><i class="ti ti-layout-dashboard"></i>หน้าหลัก</div>
   <div class="bni" onclick="goP('tx',this)"><i class="ti ti-list"></i>รายการ</div>
   <div class="bni" onclick="goP('bud',this)"><i class="ti ti-target"></i>งบ</div>
+  <div class="bni" onclick="goP('sav',this)"><i class="ti ti-piggy-bank"></i>เป้าหมาย</div>
   <div class="bni" onclick="goP('ana',this)"><i class="ti ti-chart-line"></i>วิเคราะห์</div>
-  <div class="bni" onclick="goP('bs',this)"><i class="ti ti-scale"></i>งบดุล</div>
   <div class="bni" onclick="goP('set',this)"><i class="ti ti-settings"></i>ตั้งค่า</div>
 </nav>
 </div>
@@ -1421,10 +1502,23 @@ function updateNavUser(user) {
   if (user) {
     navU.style.display = 'flex';
     soBtn.style.display = 'block';
+    var nm = user.displayName || user.email || 'ผู้ใช้';
     var em = user.email || '';
-    var nm = user.displayName || em;
+    var av = (nm[0]||'U').toUpperCase();
     document.getElementById('nav-email').textContent = nm;
-    document.getElementById('nav-av').textContent = (nm[0]||'U').toUpperCase();
+    document.getElementById('nav-av').textContent = av;
+    // Settings page user card
+    var sAv = document.getElementById('set-av');
+    if (sAv) { sAv.textContent = av; }
+    var sNm = document.getElementById('set-uname');
+    if (sNm) sNm.textContent = nm;
+    var sEm = document.getElementById('set-uemail');
+    if (sEm) sEm.textContent = em;
+    // Dashboard greeting
+    var grEl = document.getElementById('db-greeting');
+    var hr = new Date().getHours();
+    var greet = hr < 12 ? 'อรุณสวัสดิ์' : hr < 17 ? 'สวัสดีตอนบ่าย' : 'สวัสดีตอนเย็น';
+    if (grEl) grEl.textContent = greet + ', ' + nm + ' 👋';
   } else {
     navU.style.display = 'none';
     soBtn.style.display = 'none';
@@ -1462,7 +1556,7 @@ async function saveT() {
       tx = await DatabaseService.upsertTransaction(tx);
     }
     if (eTxId) {
-      var idx = TXS.findIndex(function(x){return x.id===eTxId;});
+      var idx = TXS.findIndex(function(x){ return String(x.id) === String(eTxId); });
       if (idx >= 0) TXS[idx] = tx; else TXS.push(tx);
     } else {
       TXS.push(tx);
@@ -1482,7 +1576,7 @@ async function delT() {
   SyncManager.setSyncDot('ing');
   try {
     if (AuthManager.getUser()) await DatabaseService.deleteTransaction(eTxId);
-    TXS = TXS.filter(function(x){return x.id!==eTxId;});
+    TXS = TXS.filter(function(x){ return String(x.id) !== String(eTxId); });
     closeM(); lsSave(); showToast('ลบรายการแล้ว');
     SyncManager.setSyncDot('ok');
     refreshAll();
@@ -1497,18 +1591,20 @@ async function delT() {
 // ════════════════════════════════════════════════════
 async function saveGoal() {
   var nm = document.getElementById('g-name').value.trim(); if (!nm) return;
+  var col = document.getElementById('g-col').value || '#1D9E75';
   var g = {
     id: eGID||null, nm: nm,
     tg: parseFloat(document.getElementById('g-tg').value)||0,
     base: parseFloat(document.getElementById('g-base').value)||0,
     link: document.getElementById('g-link').value,
-    mo: parseFloat(document.getElementById('g-mo').value)||0
+    mo: parseFloat(document.getElementById('g-mo').value)||0,
+    col: col
   };
-  var cols = ['#1D9E75','#378ADD','#7F77DD','#D85A30','#EF9F27'];
   SyncManager.setSyncDot('ing');
   try {
     if (AuthManager.getUser()) {
       g = await DatabaseService.upsertGoal(g);
+      g.col = col; // keep col after upsert
     } else {
       g.id = g.id || Date.now();
     }
@@ -1516,7 +1612,6 @@ async function saveGoal() {
       var gx = GOALS.find(function(x){return x.id===eGID;});
       if (gx) Object.assign(gx, g);
     } else {
-      g.col = cols[GOALS.length % cols.length];
       GOALS.push(g);
     }
     closeGM(); lsSave(); showToast('บันทึกเป้าหมายแล้ว ✓');
@@ -1959,17 +2054,25 @@ function populateTxFilter(){var sel=document.getElementById('tx-fcat');sel.inner
 
 // ====== TRANSACTION MODAL ======
 function openM(eid){
-  eTxId=eid||null;var t=eid?TXS.find(function(x){return x.id===eid;}):null;
-  document.getElementById('m-title').textContent=t?'แก้ไขรายการ':'บันทึกรายการ';
+  eTxId = eid || null;
+  var t = eid ? TXS.find(function(x){ return String(x.id) === String(eid); }) : null;
+  document.getElementById('m-title').textContent = t ? 'แก้ไขรายการ' : 'บันทึกรายการ';
   document.getElementById('mwrap').classList.add('on');
-  document.getElementById('idate').value=t?t.dt:T.toISOString().split('T')[0];
-  document.getElementById('inote').value=t?t.note:'';document.getElementById('iamt').value=t?t.amt:'';
-  document.getElementById('irec').checked=!!(t&&t.rec);
-  setT(t?t.tp:'income');cbOpen=false;document.getElementById('cat-box').classList.remove('on');
-  renderCS();if(t)document.getElementById('icat').value=t.cat;
-  var rf=document.getElementById('rec-fg');rf.style.display=(curT==='expense'||curT==='savings'||curT==='invest')?'block':'none';
+  document.getElementById('idate').value = t ? t.dt : T.toISOString().split('T')[0];
+  document.getElementById('inote').value = t ? (t.note || '') : '';
+  document.getElementById('iamt').value  = t ? t.amt : '';
+  document.getElementById('irec').checked = !!(t && t.rec);
+  setT(t ? t.tp : 'income');
+  cbOpen = false;
+  document.getElementById('cat-box').classList.remove('on');
+  renderCS();
+  if(t) document.getElementById('icat').value = t.cat;
+  var rf = document.getElementById('rec-fg');
+  rf.style.display = (curT==='expense'||curT==='savings'||curT==='invest') ? 'block' : 'none';
   var acts=document.getElementById('m-acts');
-  acts.innerHTML=t?'<button class="bcan" onclick="closeM()">ยกเลิก</button><button class="bdel" onclick="delT()">ลบ</button><button class="bsav" onclick="saveT()">บันทึก</button>':'<button class="bcan" onclick="closeM()">ยกเลิก</button><button class="bsav" onclick="saveT()">บันทึก</button>';
+  acts.innerHTML=t
+    ? '<button class="bcan" onclick="closeM()">ยกเลิก</button><button class="bdel" onclick="delT()">🗑 ลบ</button><button class="bsav" onclick="saveT()">บันทึก</button>'
+    : '<button class="bcan" onclick="closeM()">ยกเลิก</button><button class="bsav" onclick="saveT()">บันทึก</button>';
 }
 function closeM(){document.getElementById('mwrap').classList.remove('on');}
 function setT(t){curT=t;var mp={income:'ti',savings:'ts',invest:'tv',expense:'te'};['income','savings','invest','expense'].forEach(function(x,i){document.getElementById('tb'+i).className='tbx'+(x===t?' '+mp[t]:'');});var rf=document.getElementById('rec-fg');rf.style.display=(t==='expense'||t==='savings'||t==='invest')?'block':'none';}
@@ -1990,7 +2093,11 @@ function setTxV(v,el){
   if(el)el.classList.add('on');else document.querySelectorAll('.vtbtn').forEach(function(b){if((v==='day'&&b.textContent.includes('รายวัน'))||(v==='list'&&b.textContent.includes('รายการ')))b.classList.add('on');});
   var el2=document.getElementById('tx-c');if(!el2)return;
   var txs=getFilteredTxs();
-  if(!txs.length){el2.innerHTML='<div style="text-align:center;color:var(--t3);padding:24px;font-size:13px">ไม่พบรายการ</div>';return;}
+  renderTxSummary(txs);
+  if(!txs.length){
+    el2.innerHTML=emptyState('📋','ไม่พบรายการ','ลองปรับตัวกรอง หรือกด + เพิ่มรายการใหม่');
+    return;
+  }
   if(v==='day'){
     var g={};txs.forEach(function(t){if(!g[t.dt])g[t.dt]=[];g[t.dt].push(t);});
     var days=Object.keys(g).sort().reverse();
@@ -2004,10 +2111,45 @@ function setTxV(v,el){
     renderIcons(el2);
   }
 }
-function txRow(t,showDate){return'<div class="txi" data-txid="'+t.id+'"><div class="txic" style="background:'+BG[t.tp]+'"><i class="ti ti-circle" style="color:'+COL[t.tp]+'"></i></div><div class="txin"><div class="txn1">'+esc(t.note||t.cat)+(t.rec?'<span class="rec-badge">ประจำ</span>':'')+'</div><div class="txn2">'+esc(t.cat)+(showDate?' · '+t.dt:'')+'</div></div><div class="txa" style="color:'+COL[t.tp]+'">'+(t.tp==='income'?'+':t.tp==='expense'?'-':'')+f(t.amt)+'</div><button class="tx-del-btn" data-txid="'+t.id+'" onclick="quickDelTx(event,\''+t.id+'\')"><i class="ti ti-trash"></i></button></div>';}
+function txRow(t,showDate){return'<div class="txi" data-txid="'+t.id+'"><div class="txic" style="background:'+BG[t.tp]+'"><i class="ti ti-circle" style="color:'+COL[t.tp]+'"></i></div><div class="txin"><div class="txn1">'+esc(t.note||t.cat)+(t.rec?'<span class="rec-badge">ประจำ</span>':'')+'</div><div class="txn2">'+esc(t.cat)+(showDate?' · '+t.dt:'')+'</div></div><div class="txa" style="color:'+COL[t.tp]+'">'+(t.tp==='income'?'+':t.tp==='expense'?'-':'')+f(t.amt)+'</div></div>';}
 // ── Long-press action sheet ──────────────────────────────────
 var _lpTxId = null, _lpTimer = null, _lpTx = null;
 function togDay(id){var el=document.getElementById(id);var ch=document.getElementById('ch-'+id);if(!el)return;var o=el.classList.contains('open');el.classList.toggle('open',!o);if(ch)ch.style.transform=o?'':'rotate(180deg)';}
+
+// ── Quick Amount ─────────────────────────────────────────────
+function setAmt(v){ var el=document.getElementById('iamt'); if(el){ el.value = (parseFloat(el.value)||0) + v; } }
+
+// ── Goal color picker ────────────────────────────────────────
+function selGoalCol(el){
+  document.querySelectorAll('#g-colors .color-dot').forEach(function(d){ d.classList.remove('sel'); });
+  el.classList.add('sel');
+  document.getElementById('g-col').value = el.getAttribute('data-col');
+}
+
+// ── TX Summary bar ───────────────────────────────────────────
+function renderTxSummary(txs){
+  var el = document.getElementById('tx-summary'); if(!el) return;
+  var inc=0,exp=0,sav=0,inv=0;
+  txs.forEach(function(t){
+    if(t.tp==='income') inc+=t.amt;
+    else if(t.tp==='expense') exp+=t.amt;
+    else if(t.tp==='savings') sav+=t.amt;
+    else if(t.tp==='invest') inv+=t.amt;
+  });
+  el.innerHTML = [
+    {l:'รายรับ',v:inc,c:'#1D9E75'},
+    {l:'รายจ่าย',v:exp,c:'#D85A30'},
+    {l:'ออม',v:sav,c:'#378ADD'},
+    {l:'ลงทุน',v:inv,c:'#7F77DD'}
+  ].map(function(x){
+    return '<div class="tx-sum-item"><div class="tx-sum-lbl">'+x.l+'</div><div class="tx-sum-val" style="color:'+x.c+'">'+f(x.v)+'</div></div>';
+  }).join('');
+}
+
+// ── Empty state helper ───────────────────────────────────────
+function emptyState(icon, title, sub){
+  return '<div class="empty-state"><div class="empty-state-icon">'+icon+'</div><div class="empty-state-title">'+title+'</div><div class="empty-state-sub">'+sub+'</div></div>';
+}
 
 function quickDelTx(e, id) {
   e.stopPropagation();
@@ -2238,6 +2380,23 @@ function exportHTML(){
 }
 function clearAllData(){if(!confirm('ล้างรายการทั้งหมด? ไม่สามารถกู้คืนได้'))return;TXS=[];lsSave();showToast('ล้างข้อมูลแล้ว');rdDB();}
 
+function confirmClearAll(){
+  if(!confirm('⚠️ ยืนยันครั้งที่ 1\n\nล้างข้อมูลรายการทั้งหมด?\nการกระทำนี้ไม่สามารถกู้คืนได้'))return;
+  if(!confirm('⚠️ ยืนยันครั้งที่ 2\n\nแน่ใจแล้วหรือ? ข้อมูลทุกรายการจะหายไปถาวร'))return;
+  var typed = prompt('พิมพ์คำว่า "ลบข้อมูล" เพื่อยืนยัน');
+  if(typed !== 'ลบข้อมูล'){showToast('ยกเลิกการลบ');return;}
+  TXS=[];GOALS=[];lsSave();
+  if(AuthManager.getUser()){
+    SyncManager.setSyncDot('ing');
+    // ลบจาก Firestore ด้วย
+    Promise.all(
+      TXS.map(function(t){return DatabaseService.deleteTransaction(t.id).catch(function(){});})
+    ).then(function(){ SyncManager.setSyncDot('ok'); });
+  }
+  refreshAll();
+  showToast('🗑️ ล้างข้อมูลทั้งหมดแล้ว');
+}
+
 // ====== BUDGET ======
 function renderBud(){
   var yrs=getBYrs();var yEl=document.getElementById('bud-yrs');
@@ -2315,12 +2474,31 @@ function renderBudCh(){
 // ====== GOALS ======
 function renderGoals(){
   var el=document.getElementById('g-list');
+  if(!GOALS.length){
+    el.innerHTML=emptyState('🎯','ยังไม่มีเป้าหมาย','กด + เพิ่ม เพื่อตั้งเป้าหมายการออมหรือการลงทุน');
+    return;
+  }
   el.innerHTML=GOALS.map(function(g){var cu=calcGC(g);var pct=Math.min(Math.round(cu/g.tg*100),100);var mo=g.mo>0?Math.ceil((g.tg-cu)/g.mo):'-';var ll=g.link==='savings'?'🔗 ออม':g.link==='invest'?'🔗 ลงทุน':'';return'<div class="gc"><div class="gt"><span>'+esc(g.nm)+'</span><div style="display:flex;gap:5px"><button class="btn-sm" data-gid="'+g.id+'" data-a="edit">✎</button><button class="btn-sm" data-gid="'+g.id+'" data-a="del" style="color:#D85A30">🗑</button></div></div><div class="gs">ตั้งต้น '+f(g.base||0)+' '+ll+' · เก็บต่อเดือน '+f(g.mo)+' · อีก ~'+mo+' เดือน</div><div class="gp"><div class="gpf" style="width:'+pct+'%;background:'+g.col+'"></div></div><div class="gn"><span style="font-size:14px;font-weight:700;color:'+g.col+'">'+f(cu)+'</span><span>'+pct+'% · เป้า '+f(g.tg)+'</span></div></div>';}).join('')+'<button style="display:flex;align-items:center;gap:5px;padding:10px;font-size:12px;border:.5px dashed var(--bdr);border-radius:var(--r);background:transparent;color:var(--t2);cursor:pointer;width:100%;justify-content:center;margin-top:4px" id="add-gb">+ เพิ่มเป้าหมายใหม่</button>';
   el.querySelectorAll('[data-a="edit"]').forEach(function(b){b.addEventListener('click',function(){openGM(parseInt(this.getAttribute('data-gid')));});});
   el.querySelectorAll('[data-a="del"]').forEach(function(b){b.addEventListener('click',async function(){var id=parseInt(this.getAttribute('data-gid'));if(!confirm('ลบเป้าหมายนี้?'))return;SyncManager.setSyncDot('ing');try{if(AuthManager.getUser())await DatabaseService.deleteGoal(id);}catch(e){showToast('⚠️ ลบไม่สำเร็จ');SyncManager.setSyncDot('err');return;}GOALS=GOALS.filter(function(g){return g.id!==id;});lsSave();SyncManager.setSyncDot('ok');renderGoals();});});
   document.getElementById('add-gb').addEventListener('click',function(){openGM();});
 }
-function openGM(id){eGID=id||null;document.getElementById('gm-t').textContent=id?'แก้ไขเป้าหมาย':'เพิ่มเป้าหมาย';var g=id?GOALS.find(function(x){return x.id===id;}):null;document.getElementById('g-name').value=g?g.nm:'';document.getElementById('g-tg').value=g?g.tg:'';document.getElementById('g-base').value=g?(g.base||0):'';document.getElementById('g-link').value=g?(g.link||''):'';document.getElementById('g-mo').value=g?g.mo:'';document.getElementById('gmw').classList.add('on');}
+function openGM(id){
+  eGID=id||null;
+  document.getElementById('gm-t').textContent=id?'แก้ไขเป้าหมาย':'เพิ่มเป้าหมาย';
+  var g=id?GOALS.find(function(x){return x.id===id;}):null;
+  document.getElementById('g-name').value=g?g.nm:'';
+  document.getElementById('g-tg').value=g?g.tg:'';
+  document.getElementById('g-base').value=g?(g.base||0):'';
+  document.getElementById('g-link').value=g?(g.link||''):'';
+  document.getElementById('g-mo').value=g?g.mo:'';
+  var col=g?(g.col||'#1D9E75'):'#1D9E75';
+  document.getElementById('g-col').value=col;
+  document.querySelectorAll('#g-colors .color-dot').forEach(function(d){
+    d.classList.toggle('sel', d.getAttribute('data-col')===col);
+  });
+  document.getElementById('gmw').classList.add('on');
+}
 function closeGM(){document.getElementById('gmw').classList.remove('on');}
 // saveGoal — async version อยู่ใน DatabaseService section ด้านบน
 
