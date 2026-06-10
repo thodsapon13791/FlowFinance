@@ -1438,8 +1438,7 @@ async function saveT() {
     }
     closeM(); lsSave(); showToast(eTxId?'แก้ไขแล้ว ✓':'บันทึกแล้ว ✓');
     SyncManager.setSyncDot('ok');
-    rdDB();
-    if (document.getElementById('pg-tx').classList.contains('on')) setTxV(txV, null);
+    refreshAll();
   } catch(e) {
     SyncManager.setSyncDot('err');
     showToast('⚠️ บันทึกไม่สำเร็จ: ' + e.message);
@@ -1455,8 +1454,7 @@ async function delT() {
     TXS = TXS.filter(function(x){return x.id!==eTxId;});
     closeM(); lsSave(); showToast('ลบรายการแล้ว');
     SyncManager.setSyncDot('ok');
-    rdDB();
-    if (document.getElementById('pg-tx').classList.contains('on')) setTxV(txV, null);
+    refreshAll();
   } catch(e) {
     SyncManager.setSyncDot('err');
     showToast('⚠️ ลบไม่สำเร็จ: ' + e.message);
@@ -1492,7 +1490,7 @@ async function saveGoal() {
     }
     closeGM(); lsSave(); showToast('บันทึกเป้าหมายแล้ว ✓');
     SyncManager.setSyncDot('ok');
-    renderGoals();
+    refreshAll();
   } catch(e) {
     SyncManager.setSyncDot('err');
     showToast('⚠️ บันทึกเป้าหมายไม่สำเร็จ');
@@ -1532,8 +1530,9 @@ async function saveBSI() {
       if (bsmType==='asset') BSD[yr].assets.push(item);
       else BSD[yr].debts.push(item);
     }
-    closeBSM(); initBSYrSel(); renderBS(); lsSave(); showToast('บันทึกแล้ว ✓');
+    closeBSM(); initBSYrSel(); lsSave(); showToast('บันทึกแล้ว ✓');
     SyncManager.setSyncDot('ok');
+    refreshAll();
   } catch(e) {
     SyncManager.setSyncDot('err');
     showToast('⚠️ บันทึกงบดุลไม่สำเร็จ');
@@ -1656,6 +1655,23 @@ function applyT(){
   document.getElementById('set-lt').classList.toggle('on',!isDark);
   if(document.getElementById('pg-db').classList.contains('on'))rdDB();
   if(document.getElementById('pg-ana').classList.contains('on'))rAna();
+}
+
+// ── refreshAll: เรียกหลังทุก action ที่แก้ข้อมูล ──────────
+function refreshAll() {
+  lsSave();
+  // Dashboard
+  if (document.getElementById('pg-db').classList.contains('on')) rdDB();
+  // รายการ
+  if (document.getElementById('pg-tx').classList.contains('on')) { populateTxFilter(); setTxV(txV, null); }
+  // งบประมาณ
+  if (document.getElementById('pg-bud').classList.contains('on')) { renderBud(); }
+  // เป้าหมาย
+  if (document.getElementById('pg-sav').classList.contains('on')) renderGoals();
+  // วิเคราะห์
+  if (document.getElementById('pg-ana').classList.contains('on')) rAna();
+  // งบดุล
+  if (document.getElementById('pg-bs').classList.contains('on')) renderBS();
 }
 
 // ====== PROFILE / SALARY ======
@@ -1911,18 +1927,18 @@ function togDay(id){var el=document.getElementById(id);var ch=document.getElemen
 
 function quickDelTx(e, id) {
   e.stopPropagation();
+  e.preventDefault();
   var t = TXS.find(function(x){ return String(x.id)===String(id); });
   if (!t) return;
   if (!confirm('ลบ "' + (t.note||t.cat) + '" ใช่ไหม?')) return;
   TXS = TXS.filter(function(x){ return String(x.id)!==String(id); });
-  lsSave();
   if (AuthManager.getUser()) {
     SyncManager.setSyncDot('ing');
     DatabaseService.deleteTransaction(id)
       .then(function(){ SyncManager.setSyncDot('ok'); })
-      .catch(function(){ SyncManager.setSyncDot('err'); });
+      .catch(function(e){ console.error(e); SyncManager.setSyncDot('err'); });
   }
-  applyT();
+  refreshAll();
   showToast('🗑️ ลบรายการแล้ว');
 }
 var COL_NAME = {income:'รายรับ', expense:'รายจ่าย', savings:'ออมทรัพย์', invest:'ลงทุน'};
@@ -1961,7 +1977,7 @@ function lpDelete() {
       SyncManager.setSyncDot('ok');
     }).catch(function(){ SyncManager.setSyncDot('err'); });
   }
-  applyT();
+  refreshAll();
   showToast('🗑️ ลบรายการแล้ว');
 }
 function lpCopy() {
@@ -1978,7 +1994,7 @@ function lpCopy() {
       SyncManager.setSyncDot('ok');
     }).catch(function(){ SyncManager.setSyncDot('err'); });
   }
-  applyT();
+  refreshAll();
   showToast('📋 คัดลอกรายการแล้ว');
 }
 
