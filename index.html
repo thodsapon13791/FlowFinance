@@ -121,7 +121,34 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg0);color:
 .wrapper{flex:1;overflow:hidden;display:flex;flex-direction:column;position:relative}
 .main{flex:1;overflow-y:auto;padding:1rem;background:var(--bg0)}
 
-/* Mobile bottom nav (≤600px) */
+/* ══════════════════════════════════════════
+   DESKTOP LAYOUT (≥ 900px) — Sidebar
+   ══════════════════════════════════════════ */
+@media(min-width:900px){
+  .botnav{display:none!important}
+  .sidebar{
+    display:flex!important;
+    flex-direction:column;
+    width:210px;
+    min-width:210px;
+    background:var(--bg1);
+    border-right:.5px solid var(--bdr);
+    height:100vh;
+    overflow-y:auto;
+    flex-shrink:0;
+    padding:0 0 16px 0;
+  }
+  .app{flex-direction:row!important;height:100vh;overflow:hidden}
+  .wrapper{flex:1;min-width:0;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+  .main{flex:1;overflow-y:auto;padding:1.5rem 2rem;background:var(--bg0)}
+  /* Hide top nav on desktop — sidebar replaces it */
+  .topnav{display:none!important}
+}
+@media(max-width:899px){
+  /* tablet/mobile: normal topnav, no sidebar */
+  .sidebar{display:none!important}
+}
+/* Mobile bottom nav */
 @media(max-width:600px){
   .topnav{display:none}
   .botnav{display:flex;position:fixed;bottom:0;left:0;right:0;height:56px;background:var(--bg1);border-top:.5px solid var(--bdr);z-index:100}
@@ -130,7 +157,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg0);color:
   .bni.on{color:#1D9E75;border-top-color:#1D9E75}
   .main{padding:.75rem;padding-bottom:70px}
 }
-@media(min-width:601px){
+@media(min-width:601px) and (max-width:899px){
   .botnav{display:none}
 }
 .pg{display:none}.pg.on{display:block}
@@ -228,19 +255,70 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg0);color:
 .ci{font-size:11px;color:var(--t2)}.ci strong{color:var(--t1)}
 /* Transactions */
 .day-group{margin-bottom:6px}
-.day-hd{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--bg2);border-radius:var(--r);cursor:pointer;border:.5px solid var(--bdr)}
+.day-hd{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg2);border-radius:var(--r);cursor:pointer;border:.5px solid var(--bdr)}
 .day-hd:hover{filter:brightness(.9)}
-.day-dt{font-size:12px;font-weight:500;color:var(--t1)}
+.day-dt{font-size:13px;font-weight:600;color:var(--t1)}
 .day-txs{display:none;border:.5px solid var(--bdr);border-top:none;border-radius:0 0 var(--r) var(--r);overflow:hidden}
 .day-txs.open{display:block}
-.txi{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:.5px solid var(--bdr);background:var(--bg1);cursor:pointer}
+.txi{display:flex;align-items:center;gap:10px;padding:11px 12px;border-bottom:.5px solid var(--bdr);background:var(--bg1);cursor:pointer;transition:background .1s;-webkit-user-select:none;user-select:none}
 .txi:hover{background:var(--bg2)}
 .txi:last-child{border-bottom:none}
-.txic{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.txi.pressing{background:rgba(29,158,117,.08);transform:scale(.99)}
+.txic{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.txic i{font-size:17px}
 .txin{flex:1;min-width:0}
-.txn1{font-size:12px;color:var(--t1);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.txn2{font-size:10px;color:var(--t2)}
-.txa{font-size:12px;font-weight:600;white-space:nowrap}
+.txn1{font-size:14px;color:var(--t1);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.txn2{font-size:12px;color:var(--t2);margin-top:1px}
+.txa{font-size:14px;font-weight:700;white-space:nowrap}
+
+/* Long-press action sheet */
+.lp-sheet{
+  display:none;position:fixed;inset:0;z-index:2000;
+  align-items:flex-end;justify-content:center;
+  background:rgba(0,0,0,.5);
+  animation:fadein .15s ease;
+}
+.lp-sheet.on{display:flex}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+.lp-body{
+  background:var(--bg1);border-radius:18px 18px 0 0;
+  padding:8px 0 28px;width:100%;max-width:500px;
+  animation:slideup .2s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes slideup{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
+.lp-handle{width:36px;height:4px;background:var(--bdr);border-radius:2px;margin:8px auto 14px}
+.lp-info{padding:4px 20px 14px;border-bottom:.5px solid var(--bdr);margin-bottom:6px}
+.lp-tx-name{font-size:15px;font-weight:700;color:var(--t1)}
+.lp-tx-amt{font-size:13px;font-weight:600;margin-top:3px}
+.lp-tx-meta{font-size:12px;color:var(--t2);margin-top:2px}
+.lp-action{
+  display:flex;align-items:center;gap:14px;
+  padding:14px 20px;font-size:15px;color:var(--t1);
+  cursor:pointer;transition:background .12s;
+}
+.lp-action:hover{background:var(--bg2)}
+.lp-action i{font-size:20px;width:24px;text-align:center}
+.lp-action.del{color:#D85A30}
+.lp-action.add{color:#1D9E75}
+.lp-cancel{
+  margin:8px 12px 0;padding:13px;text-align:center;
+  font-size:15px;font-weight:600;color:var(--t2);
+  background:var(--bg2);border-radius:var(--r);
+  cursor:pointer;border:.5px solid var(--bdr);
+}
+.lp-cancel:hover{color:var(--t1)}
+
+/* Mobile bigger touch targets */
+@media(max-width:600px){
+  .txi{padding:13px 12px}
+  .txn1{font-size:15px}
+  .txn2{font-size:12px}
+  .txa{font-size:15px}
+  .txic{width:38px;height:38px;border-radius:10px}
+  .day-hd{padding:11px 13px}
+  .day-dt{font-size:14px}
+  .btn-add{padding:11px 20px;font-size:14px}
+}
 .vtog{display:flex;background:var(--bg2);border-radius:var(--r);padding:3px;gap:2px;margin-bottom:12px;width:fit-content;border:.5px solid var(--bdr)}
 /* Search bar */
 .srchbar{display:flex;align-items:center;gap:8px;margin-bottom:10px}
@@ -510,6 +588,21 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg0);color:
 <!-- Settings: salary editor modal -->
 <div class="mwrap" id="sal-mw" onclick="if(event.target===this)closeSalM()">
   <div class="modal"><h2>ตั้งค่าเงินเดือน / รายรับ</h2><div class="fg"><label>เงินเดือนต่อเดือน (฿)</label><input type="number" id="sal-amt" inputmode="decimal" placeholder="45000"></div><div class="fg"><label>รายได้เสริม / Freelance (฿)</label><input type="number" id="sal-extra" inputmode="decimal" placeholder="0"></div><div class="mact"><button class="bcan" onclick="closeSalM()">ยกเลิก</button><button class="bsav" onclick="saveSalary()">บันทึก</button></div></div>
+</div>
+<!-- Long-press action sheet -->
+<div class="lp-sheet" id="lp-sheet" onclick="if(event.target===this)closeLPSheet()">
+  <div class="lp-body">
+    <div class="lp-handle"></div>
+    <div class="lp-info">
+      <div class="lp-tx-name" id="lp-name">—</div>
+      <div class="lp-tx-amt" id="lp-amt">—</div>
+      <div class="lp-tx-meta" id="lp-meta">—</div>
+    </div>
+    <div class="lp-action add" onclick="lpEdit()"><i class="ti ti-pencil"></i> แก้ไขรายการ</div>
+    <div class="lp-action" onclick="lpCopy()"><i class="ti ti-copy"></i> คัดลอกรายการ</div>
+    <div class="lp-action del" onclick="lpDelete()"><i class="ti ti-trash"></i> ลบรายการนี้</div>
+    <div class="lp-cancel" onclick="closeLPSheet()">ยกเลิก</div>
+  </div>
 </div>
 <!-- Toast -->
 <div class="toast" id="toast"></div>
@@ -1754,14 +1847,116 @@ function setTxV(v,el){
     var days=Object.keys(g).sort().reverse();
     el2.innerHTML=days.map(function(dt){var ts=g[dt];var net=ts.reduce(function(s,t){return s+(t.tp==='income'?t.amt:t.tp==='expense'?-t.amt:0);},0);var nc=net>=0?'#1D9E75':'#D85A30';var id='txd-'+dt.replace(/-/g,'');return'<div class="day-group"><div class="day-hd" data-id="'+id+'"><span class="day-dt">'+fmtD(dt)+'</span><span style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:700;color:'+nc+'">'+(net>=0?'+':'')+f(net)+'</span><span style="display:inline-block;transition:transform .2s" id="ch-'+id+'">&#9660;</span></span></div><div class="day-txs open" id="'+id+'">'+ts.map(function(t){return txRow(t);}).join('')+'</div></div>';}).join('');
     el2.querySelectorAll('.day-hd').forEach(function(hd){hd.addEventListener('click',function(){togDay(this.getAttribute('data-id'));});});
-    el2.querySelectorAll('.txi').forEach(function(row){row.addEventListener('click',function(){openM(parseInt(this.getAttribute('data-txid')));});});
+    attachTxEvents(el2);
   }else{
     el2.innerHTML='<div style="background:var(--bg1);border-radius:var(--rl);border:.5px solid var(--bdr);overflow:hidden">'+txs.slice().sort(function(a,b){return b.dt.localeCompare(a.dt);}).map(function(t){return txRow(t,true);}).join('')+'</div>';
-    el2.querySelectorAll('.txi').forEach(function(row){row.addEventListener('click',function(){openM(parseInt(this.getAttribute('data-txid')));});});
+    attachTxEvents(el2);
   }
 }
 function txRow(t,showDate){return'<div class="txi" data-txid="'+t.id+'"><div class="txic" style="background:'+BG[t.tp]+'"><i class="ti ti-circle" style="color:'+COL[t.tp]+'"></i></div><div class="txin"><div class="txn1">'+esc(t.note||t.cat)+(t.rec?'<span class="rec-badge">ประจำ</span>':'')+'</div><div class="txn2">'+esc(t.cat)+(showDate?' · '+t.dt:'')+'</div></div><div class="txa" style="color:'+COL[t.tp]+'">'+(t.tp==='income'?'+':t.tp==='expense'?'-':'')+f(t.amt)+'</div><i class="ti ti-pencil" style="font-size:11px;color:var(--t3);margin-left:4px"></i></div>';}
+// ── Long-press action sheet ──────────────────────────────────
+var _lpTxId = null, _lpTimer = null, _lpTx = null;
 function togDay(id){var el=document.getElementById(id);var ch=document.getElementById('ch-'+id);if(!el)return;var o=el.classList.contains('open');el.classList.toggle('open',!o);if(ch)ch.style.transform=o?'':'rotate(180deg)';}
+var COL_NAME = {income:'รายรับ', expense:'รายจ่าย', savings:'ออมทรัพย์', invest:'ลงทุน'};
+
+function openLPSheet(txId) {
+  _lpTxId = txId;
+  _lpTx = TXS.find(function(t){ return String(t.id)===String(txId); });
+  if (!_lpTx) return;
+  document.getElementById('lp-name').textContent = _lpTx.note || _lpTx.cat || '—';
+  document.getElementById('lp-amt').textContent =
+    (_lpTx.tp==='income'?'+':_lpTx.tp==='expense'?'-':'') + f(_lpTx.amt) + ' บาท';
+  document.getElementById('lp-amt').style.color = COL[_lpTx.tp] || 'var(--t1)';
+  document.getElementById('lp-meta').textContent =
+    COL_NAME[_lpTx.tp] + ' · ' + _lpTx.cat + ' · ' + fmtD(_lpTx.dt);
+  document.getElementById('lp-sheet').classList.add('on');
+}
+function closeLPSheet() {
+  document.getElementById('lp-sheet').classList.remove('on');
+  _lpTxId = null; _lpTx = null;
+}
+function lpEdit() {
+  closeLPSheet();
+  openM(String(_lpTxId));
+}
+function lpDelete() {
+  if (!_lpTx) return;
+  var name = _lpTx.note || _lpTx.cat;
+  closeLPSheet();
+  if (!confirm('ลบ "' + name + '" ใช่ไหม?')) return;
+  var id = _lpTxId;
+  TXS = TXS.filter(function(t){ return String(t.id) !== String(id); });
+  lsSave();
+  if (AuthManager.getUser()) {
+    SyncManager.setSyncDot('ing');
+    DatabaseService.deleteTransaction(id).then(function(){
+      SyncManager.setSyncDot('ok');
+    }).catch(function(){ SyncManager.setSyncDot('err'); });
+  }
+  applyT();
+  showToast('🗑️ ลบรายการแล้ว');
+}
+function lpCopy() {
+  if (!_lpTx) return;
+  var t = Object.assign({}, _lpTx);
+  t.id = Date.now();
+  t.dt = new Date().toISOString().split('T')[0];
+  closeLPSheet();
+  TXS.push(t);
+  lsSave();
+  if (AuthManager.getUser()) {
+    SyncManager.setSyncDot('ing');
+    DatabaseService.upsertTransaction(t).then(function(){
+      SyncManager.setSyncDot('ok');
+    }).catch(function(){ SyncManager.setSyncDot('err'); });
+  }
+  applyT();
+  showToast('📋 คัดลอกรายการแล้ว');
+}
+
+// ── Attach long-press + click to .txi rows ──────────────────
+function attachTxEvents(container) {
+  container.querySelectorAll('.txi').forEach(function(row) {
+    var txId = row.getAttribute('data-txid');
+    var pressTimer = null;
+    var didLongPress = false;
+
+    // Touch: long-press = action sheet, tap = edit
+    row.addEventListener('touchstart', function(e) {
+      didLongPress = false;
+      row.classList.add('pressing');
+      pressTimer = setTimeout(function() {
+        didLongPress = true;
+        row.classList.remove('pressing');
+        if (navigator.vibrate) navigator.vibrate(40);
+        openLPSheet(txId);
+      }, 500);
+    }, {passive:true});
+
+    row.addEventListener('touchend', function(e) {
+      clearTimeout(pressTimer);
+      row.classList.remove('pressing');
+      if (!didLongPress) {
+        openM(txId);
+      }
+    }, {passive:true});
+
+    row.addEventListener('touchmove', function() {
+      clearTimeout(pressTimer);
+      row.classList.remove('pressing');
+      didLongPress = true; // cancel tap
+    }, {passive:true});
+
+    // Desktop: click = edit, right-click = action sheet
+    row.addEventListener('click', function(e) {
+      if (!('ontouchstart' in window)) openM(txId);
+    });
+    row.addEventListener('contextmenu', function(e) {
+      e.preventDefault();
+      openLPSheet(txId);
+    });
+  });
+}
 
 // ====== DASHBOARD ======
 var dbSS=null,dbSE=null,dbCdOpen=false,dbCUR='2026-5';
@@ -1836,7 +2031,7 @@ function rdDB(){
   if(!days.length){el.innerHTML='<div style="text-align:center;color:var(--t3);padding:16px;font-size:12px">ยังไม่มีรายการในช่วงนี้</div>';return;}
   el.innerHTML=days.map(function(dt){var ts=g[dt];var net=ts.reduce(function(s,t){return s+(t.tp==='income'?t.amt:t.tp==='expense'?-t.amt:0);},0);var nc=net>=0?'#1D9E75':'#D85A30';var id='db-d-'+dt.replace(/-/g,'');return'<div class="day-group"><div class="day-hd" data-id="'+id+'"><span class="day-dt">'+fmtD(dt)+'</span><span style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:700;color:'+nc+'">'+(net>=0?'+':'')+f(net)+'</span><span style="display:inline-block;transition:transform .2s" id="ch-'+id+'">&#9660;</span></span></div><div class="day-txs" id="'+id+'">'+ts.map(function(t){return txRow(t);}).join('')+'</div></div>';}).join('');
   el.querySelectorAll('.day-hd').forEach(function(hd){hd.addEventListener('click',function(){togDay(this.getAttribute('data-id'));});});
-  el.querySelectorAll('.txi').forEach(function(row){row.addEventListener('click',function(){openM(parseInt(this.getAttribute('data-txid')));});});
+  attachTxEvents(el);
 }
 
 // ====== EXPORTS ======
