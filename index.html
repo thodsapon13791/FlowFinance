@@ -270,6 +270,17 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg0);color:
 .txn1{font-size:14px;color:var(--t1);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .txn2{font-size:12px;color:var(--t2);margin-top:1px}
 .txa{font-size:14px;font-weight:700;white-space:nowrap}
+.tx-del-btn{
+  background:none;border:none;cursor:pointer;
+  width:32px;height:32px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--t3);font-size:15px;flex-shrink:0;
+  transition:all .15s;margin-left:4px;
+}
+.tx-del-btn:hover{background:var(--rel,#FCEBEB);color:#D85A30}
+@media(max-width:600px){
+  .tx-del-btn{width:38px;height:38px;font-size:18px}
+}
 
 /* Long-press action sheet */
 .lp-sheet{
@@ -1853,10 +1864,27 @@ function setTxV(v,el){
     attachTxEvents(el2);
   }
 }
-function txRow(t,showDate){return'<div class="txi" data-txid="'+t.id+'"><div class="txic" style="background:'+BG[t.tp]+'"><i class="ti ti-circle" style="color:'+COL[t.tp]+'"></i></div><div class="txin"><div class="txn1">'+esc(t.note||t.cat)+(t.rec?'<span class="rec-badge">ประจำ</span>':'')+'</div><div class="txn2">'+esc(t.cat)+(showDate?' · '+t.dt:'')+'</div></div><div class="txa" style="color:'+COL[t.tp]+'">'+(t.tp==='income'?'+':t.tp==='expense'?'-':'')+f(t.amt)+'</div><i class="ti ti-pencil" style="font-size:11px;color:var(--t3);margin-left:4px"></i></div>';}
+function txRow(t,showDate){return'<div class="txi" data-txid="'+t.id+'"><div class="txic" style="background:'+BG[t.tp]+'"><i class="ti ti-circle" style="color:'+COL[t.tp]+'"></i></div><div class="txin"><div class="txn1">'+esc(t.note||t.cat)+(t.rec?'<span class="rec-badge">ประจำ</span>':'')+'</div><div class="txn2">'+esc(t.cat)+(showDate?' · '+t.dt:'')+'</div></div><div class="txa" style="color:'+COL[t.tp]+'">'+(t.tp==='income'?'+':t.tp==='expense'?'-':'')+f(t.amt)+'</div><button class="tx-del-btn" data-txid="'+t.id+'" onclick="quickDelTx(event,\''+t.id+'\')"><i class="ti ti-trash"></i></button></div>';}
 // ── Long-press action sheet ──────────────────────────────────
 var _lpTxId = null, _lpTimer = null, _lpTx = null;
 function togDay(id){var el=document.getElementById(id);var ch=document.getElementById('ch-'+id);if(!el)return;var o=el.classList.contains('open');el.classList.toggle('open',!o);if(ch)ch.style.transform=o?'':'rotate(180deg)';}
+
+function quickDelTx(e, id) {
+  e.stopPropagation();
+  var t = TXS.find(function(x){ return String(x.id)===String(id); });
+  if (!t) return;
+  if (!confirm('ลบ "' + (t.note||t.cat) + '" ใช่ไหม?')) return;
+  TXS = TXS.filter(function(x){ return String(x.id)!==String(id); });
+  lsSave();
+  if (AuthManager.getUser()) {
+    SyncManager.setSyncDot('ing');
+    DatabaseService.deleteTransaction(id)
+      .then(function(){ SyncManager.setSyncDot('ok'); })
+      .catch(function(){ SyncManager.setSyncDot('err'); });
+  }
+  applyT();
+  showToast('🗑️ ลบรายการแล้ว');
+}
 var COL_NAME = {income:'รายรับ', expense:'รายจ่าย', savings:'ออมทรัพย์', invest:'ลงทุน'};
 
 function openLPSheet(txId) {
