@@ -4,7 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FlowFinance</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1D9E75">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FlowFinance">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <!-- Firebase SDK -->
 <script type="module">
@@ -121,33 +131,6 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg0);color:
 .wrapper{flex:1;overflow:hidden;display:flex;flex-direction:column;position:relative}
 .main{flex:1;overflow-y:auto;padding:1rem;background:var(--bg0)}
 
-/* ══════════════════════════════════════════
-   DESKTOP LAYOUT (≥ 900px) — Sidebar
-   ══════════════════════════════════════════ */
-@media(min-width:900px){
-  .botnav{display:none!important}
-  .sidebar{
-    display:flex!important;
-    flex-direction:column;
-    width:210px;
-    min-width:210px;
-    background:var(--bg1);
-    border-right:.5px solid var(--bdr);
-    height:100vh;
-    overflow-y:auto;
-    flex-shrink:0;
-    padding:0 0 16px 0;
-  }
-  .app{flex-direction:row!important;height:100vh;overflow:hidden}
-  .wrapper{flex:1;min-width:0;display:flex;flex-direction:column;height:100vh;overflow:hidden}
-  .main{flex:1;overflow-y:auto;padding:1.5rem 2rem;background:var(--bg0)}
-  /* Hide top nav on desktop — sidebar replaces it */
-  .topnav{display:none!important}
-}
-@media(max-width:899px){
-  /* tablet/mobile: normal topnav, no sidebar */
-  .sidebar{display:none!important}
-}
 /* Mobile bottom nav */
 @media(max-width:600px){
   .topnav{display:none}
@@ -157,7 +140,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg0);color:
   .bni.on{color:#1D9E75;border-top-color:#1D9E75}
   .main{padding:.75rem;padding-bottom:70px}
 }
-@media(min-width:601px) and (max-width:899px){
+@media(min-width:601px){
   .botnav{display:none}
 }
 .pg{display:none}.pg.on{display:block}
@@ -2526,7 +2509,16 @@ document.addEventListener('click',function(e){
 
 // ====== INIT ======
 bootApp();
-
+</script>
+<script>
+// ── PWA Service Worker ──
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('sw.js')
+      .then(function(){ console.log('SW registered'); })
+      .catch(function(e){ console.log('SW error:', e); });
+  });
+}
 </script>
 </body>
 </html>
