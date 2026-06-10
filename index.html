@@ -704,9 +704,40 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg0);color:
 </div>
 <!-- BUDGET -->
 <div id="pg-bud" class="pg">
-  <div class="topbar"><div><h1>งบประมาณ</h1></div></div>
+  <div class="topbar">
+    <div><h1>งบประมาณ</h1></div>
+    <div style="display:flex;gap:6px">
+      <button class="btn-add" onclick="openBudAddCat()"><i class="ti ti-plus"></i> เพิ่มหมวด</button>
+      <button class="btn-sm-r" onclick="openBudDelCat()"><i class="ti ti-trash"></i> ลบหมวด</button>
+    </div>
+  </div>
   <div class="card"><div class="bud-ctrl"><div style="display:flex;gap:4px;flex-wrap:wrap" id="bud-yrs"></div><div style="width:.5px;height:20px;background:var(--bdr)"></div><div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center" id="bud-mbs"></div><button class="btn-clr" id="bud-clr" onclick="clearBM()" style="display:none"><i class="ti ti-x"></i> ล้าง</button></div><div style="overflow-x:auto"><table class="bud-tbl" id="bud-tbl"></table></div></div>
   <div class="card"><div class="ct">รายจ่าย vs งบประมาณ</div><div style="position:relative;height:200px"><canvas id="bud-ch"></canvas></div><div class="leg" style="margin-top:6px"><span><span class="legdot" style="background:rgba(29,158,117,.7)"></span>งบประมาณ</span><span><span class="legdot" style="background:rgba(55,138,221,.8)"></span>จริง</span></div></div>
+
+  <!-- Modal เพิ่มหมวดงบประมาณ -->
+  <div class="mwrap" id="bud-add-cat-m" onclick="if(event.target===this)closeBudAddCat()">
+    <div class="modal">
+      <h2>เพิ่มหมวดงบประมาณ</h2>
+      <div class="fg"><label>ชื่อหมวด</label><input type="text" id="bud-new-cat" placeholder="เช่น ท่องเที่ยว"></div>
+      <div class="fg"><label>งบเริ่มต้นต่อเดือน (฿)</label><input type="number" id="bud-new-amt" placeholder="3000" inputmode="decimal"></div>
+      <div class="mact">
+        <button class="bcan" onclick="closeBudAddCat()">ยกเลิก</button>
+        <button class="bsav" onclick="saveBudAddCat()">+ เพิ่ม</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal ลบหมวดงบประมาณ -->
+  <div class="mwrap" id="bud-del-cat-m" onclick="if(event.target===this)closeBudDelCat()">
+    <div class="modal">
+      <h2>ลบหมวดงบประมาณ</h2>
+      <p style="font-size:12px;color:var(--t2);margin-bottom:12px">เลือกหมวดที่ต้องการลบ</p>
+      <div id="bud-del-cat-list" style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto"></div>
+      <div class="mact" style="margin-top:14px">
+        <button class="bcan" onclick="closeBudDelCat()">ปิด</button>
+      </div>
+    </div>
+  </div>
 </div>
 <!-- GOALS -->
 <div id="pg-sav" class="pg">
@@ -1660,18 +1691,22 @@ function applyT(){
 // ── refreshAll: เรียกหลังทุก action ที่แก้ข้อมูล ──────────
 function refreshAll() {
   lsSave();
-  // Dashboard
-  if (document.getElementById('pg-db').classList.contains('on')) rdDB();
-  // รายการ
-  if (document.getElementById('pg-tx').classList.contains('on')) { populateTxFilter(); setTxV(txV, null); }
-  // งบประมาณ
-  if (document.getElementById('pg-bud').classList.contains('on')) { renderBud(); }
-  // เป้าหมาย
-  if (document.getElementById('pg-sav').classList.contains('on')) renderGoals();
-  // วิเคราะห์
-  if (document.getElementById('pg-ana').classList.contains('on')) rAna();
-  // งบดุล
-  if (document.getElementById('pg-bs').classList.contains('on')) renderBS();
+  var onDB  = document.getElementById('pg-db').classList.contains('on');
+  var onTX  = document.getElementById('pg-tx').classList.contains('on');
+  var onBUD = document.getElementById('pg-bud').classList.contains('on');
+  var onSAV = document.getElementById('pg-sav').classList.contains('on');
+  var onANA = document.getElementById('pg-ana').classList.contains('on');
+  var onBS  = document.getElementById('pg-bs').classList.contains('on');
+
+  if (onDB)  { rdDB(); }
+  if (onTX)  { populateTxFilter(); setTxV(txV, null); }
+  if (onBUD) { renderBud(); }
+  if (onSAV) { renderGoals(); }
+  if (onANA) { rAna(); }
+  if (onBS)  { renderBS(); }
+
+  // re-render icons หลัง dynamic content ทุกหน้า
+  setTimeout(function() { renderIcons(document.getElementById('app')); }, 50);
 }
 
 // ====== PROFILE / SALARY ======
@@ -1685,31 +1720,70 @@ function renderSalLbl(){var el=document.getElementById('sal-lbl');if(el)el.textC
 
 // ====== CATEGORIES ======
 var CATS=['อาหาร','เดินทาง','ช้อปปิ้ง','บันเทิง','สุขภาพ','ที่พัก','กาแฟ','เสื้อผ้า','กองทุน','เงินเดือน','อื่นๆ'];
-var cbOpen=false;
+// ── หมวดที่ไม่เข้าตารางงบ (รายรับ/ออม/ลงทุน) ──────────────
+var EXCL_CATS = ['เงินเดือน','กองทุน','อื่นๆ'];
+
+// เพิ่มหมวดใหม่ — sync ทั้ง CATS และ BUDS ─────────────────
+function addCatToAll(name, defaultAmt) {
+  if (!name || CATS.indexOf(name) >= 0) return false;
+  CATS.push(name);
+  if (!CAT[name]) CAT[name] = {c: catColor(CATS.length-1), n: false};
+  // เพิ่มในงบประมาณทุกปี (ถ้าไม่ใช่หมวดที่ exclude)
+  if (EXCL_CATS.indexOf(name) < 0) {
+    getBYrs().forEach(function(y) {
+      ensureBY(y);
+      if (!BUDS[y][name]) {
+        BUDS[y][name] = {};
+        for (var m = 0; m < 12; m++) BUDS[y][name][m] = defaultAmt || 0;
+      }
+    });
+  }
+  return true;
+}
+
+// ลบหมวด — sync ทั้ง CATS และ BUDS ──────────────────────────
+function delCatFromAll(name) {
+  if (CATS.length <= 1) return;
+  CATS = CATS.filter(function(x){ return x !== name; });
+  Object.keys(BUDS).forEach(function(y){ delete BUDS[y][name]; });
+}
+
 function togCB(){cbOpen=!cbOpen;document.getElementById('cat-box').classList.toggle('on',cbOpen);if(cbOpen)renderCC();}
 function renderCS(){var el=document.getElementById('icat');if(!el)return;var cur=el.value;el.innerHTML=CATS.map(function(c){return'<option'+(c===cur?' selected':'')+'>'+c+'</option>';}).join('');}
 function renderCC(){var el=document.getElementById('cat-chips');if(!el)return;el.innerHTML=CATS.map(function(c){return'<span class="cat-chip">'+c+'<span class="cat-del" data-c="'+c+'"> x</span></span>';}).join('');el.querySelectorAll('.cat-del').forEach(function(d){d.addEventListener('click',function(){delCat(this.getAttribute('data-c'));});});}
-function delCat(c){if(CATS.length<=1)return;CATS=CATS.filter(function(x){return x!==c;});renderCS();renderCC();renderSetChips();populateTxFilter();lsSave();}
-// palette for new categories
+
+function delCat(c){
+  delCatFromAll(c);
+  renderCS();renderCC();renderSetChips();populateTxFilter();lsSave();
+  // อัพเดทงบประมาณถ้าเปิดอยู่
+  if(document.getElementById('pg-bud').classList.contains('on')) renderBud();
+}
+
 var CAT_PALETTE=['#1D9E75','#378ADD','#7F77DD','#EF9F27','#D4537E','#639922','#C45228','#BA7517','#888780'];
 function catColor(idx){return CAT_PALETTE[idx%CAT_PALETTE.length];}
+
 function addCat(){
   var v=document.getElementById('nci').value.trim();
-  if(!v||CATS.includes(v))return;
-  CATS.push(v);
-  if(!CAT[v])CAT[v]={c:catColor(CATS.length-1),n:false};
-  document.getElementById('nci').value='';
-  renderCS();renderCC();renderSetChips();populateTxFilter();lsSave();
+  if(!v)return;
+  if(addCatToAll(v, 0)){
+    document.getElementById('nci').value='';
+    renderCS();renderCC();renderSetChips();populateTxFilter();lsSave();
+    showToast('✅ เพิ่มหมวด "'+v+'" แล้ว (งบประมาณตั้งไว้ 0 บาท)');
+  } else {
+    showToast('หมวดนี้มีอยู่แล้ว');
+  }
 }
 function addCatSet(){
   var v=document.getElementById('set-nc').value.trim();
-  if(!v||CATS.includes(v))return;
-  CATS.push(v);
-  if(!CAT[v])CAT[v]={c:catColor(CATS.length-1),n:false};
-  document.getElementById('set-nc').value='';
-  renderCS();renderSetChips();populateTxFilter();lsSave();
+  if(!v)return;
+  if(addCatToAll(v, 0)){
+    document.getElementById('set-nc').value='';
+    renderCS();renderSetChips();populateTxFilter();lsSave();
+    showToast('✅ เพิ่มหมวด "'+v+'" แล้ว');
+  } else {
+    showToast('หมวดนี้มีอยู่แล้ว');
+  }
 }
-function delCat(c){if(CATS.length<=1)return;CATS=CATS.filter(function(x){return x!==c;});renderCS();renderCC();renderSetChips();populateTxFilter();lsSave();}
 function renderSetChips(){var el=document.getElementById('set-chips');if(!el)return;el.innerHTML=CATS.map(function(c){return'<span class="cat-chip">'+c+'<span class="cat-del" data-c="'+c+'"> x</span></span>';}).join('');el.querySelectorAll('.cat-del').forEach(function(d){d.addEventListener('click',function(){delCat(this.getAttribute('data-c'));});});}
 
 var CAT={อาหาร:{c:'#D85A30',n:true},เดินทาง:{c:'#BA7517',n:true},ที่พัก:{c:'#378ADD',n:true},สุขภาพ:{c:'#639922',n:true},ช้อปปิ้ง:{c:'#7F77DD',n:false},บันเทิง:{c:'#EF9F27',n:false},กาแฟ:{c:'#C45228',n:false},เสื้อผ้า:{c:'#D4537E',n:false},อื่นๆ:{c:'#888780',n:false}};
@@ -1761,9 +1835,19 @@ function buildMD(){
 // ====== BUDGETS ======
 var BUDS={};
 var CY=T.getFullYear();var sBY=CY,sBM=null,cBE=null,budCh=null;
-function getBCats(){return CATS.filter(function(c){return c!=='อื่นๆ'&&c!=='เงินเดือน'&&c!=='กองทุน';});}
+function getBCats(){return CATS.filter(function(c){return EXCL_CATS.indexOf(c)<0;});}
 function getBYrs(){return[CY-1,CY,CY+1];}
-function ensureBY(y){if(!BUDS[y]){BUDS[y]={};getBCats().forEach(function(c){BUDS[y][c]={};for(var m=0;m<12;m++){var d={อาหาร:8000,เดินทาง:3000,ช้อปปิ้ง:5000,บันเทิง:2000,สุขภาพ:2000,ที่พัก:9000,กาแฟ:3500,เสื้อผ้า:2000}[c]||3000;BUDS[y][c][m]=d;}});}}
+function ensureBY(y){
+  if(!BUDS[y]) BUDS[y]={};
+  getBCats().forEach(function(c){
+    if(!BUDS[y][c]){
+      BUDS[y][c]={};
+      // ถ้าเป็นหมวดเดิมที่รู้จัก ใส่ค่า default ถ้าเป็นหมวดใหม่ ใส่ 0
+      var def={อาหาร:8000,เดินทาง:3000,ช้อปปิ้ง:5000,บันเทิง:2000,สุขภาพ:2000,ที่พัก:9000,กาแฟ:3500,เสื้อผ้า:2000}[c]||0;
+      for(var m=0;m<12;m++) BUDS[y][c][m]=def;
+    }
+  });
+}
 getBYrs().forEach(function(y){ensureBY(y);});
 
 // ====== GOALS ======
@@ -1859,7 +1943,6 @@ function goP(id,el){
   document.querySelectorAll('.pg').forEach(function(p){p.classList.remove('on');});
   document.querySelectorAll('.ni,.bni').forEach(function(n){n.classList.remove('on');});
   document.getElementById('pg-'+id).classList.add('on');
-  // Highlight matching nav items in both top and bottom nav
   document.querySelectorAll('.ni,.bni').forEach(function(n){
     if(n.getAttribute('onclick')&&n.getAttribute('onclick').indexOf("'"+id+"'")>=0)n.classList.add('on');
   });
@@ -1870,6 +1953,7 @@ function goP(id,el){
   if(id==='ana'){if(!SS)initAR();renderDrop();setTimeout(function(){rAna();},80);}
   if(id==='bs')renderBS();
   if(id==='set'){renderSetChips();renderSalLbl();if(userName)document.getElementById('set-name').value=userName;}
+  setTimeout(function(){ renderIcons(document.getElementById('pg-'+id)); }, 60);
 }
 function populateTxFilter(){var sel=document.getElementById('tx-fcat');sel.innerHTML='<option value="">ทุกหมวด</option>'+CATS.map(function(c){return'<option>'+c+'</option>';}).join('');}
 
@@ -2180,6 +2264,46 @@ function renderBudTbl(){
 }
 function closeBudM(){document.getElementById('budm').classList.remove('on');}
 function saveBud(){if(!cBE)return;var v=parseFloat(document.getElementById('b-amt').value);if(!v)return;BUDS[cBE.year][cBE.cat][cBE.month]=v;closeBudM();renderBudTbl();renderBudCh();lsSave();showToast('บันทึกงบประมาณแล้ว');}
+
+// ── เพิ่มหมวดงบประมาณ ──────────────────────────────────────
+function openBudAddCat(){
+  document.getElementById('bud-new-cat').value='';
+  document.getElementById('bud-new-amt').value='3000';
+  document.getElementById('bud-add-cat-m').classList.add('on');
+}
+function closeBudAddCat(){ document.getElementById('bud-add-cat-m').classList.remove('on'); }
+function saveBudAddCat(){
+  var nm = document.getElementById('bud-new-cat').value.trim();
+  var amt = parseFloat(document.getElementById('bud-new-amt').value) || 0;
+  if (!nm) { showToast('กรุณาใส่ชื่อหมวด'); return; }
+  if (CATS.indexOf(nm) >= 0) { showToast('หมวดนี้มีอยู่แล้ว'); return; }
+  addCatToAll(nm, amt);
+  closeBudAddCat();
+  renderCS(); renderCC(); renderSetChips(); populateTxFilter(); lsSave();
+  renderBud();
+  showToast('✅ เพิ่มหมวด "' + nm + '" งบ ' + (amt||0).toLocaleString('th-TH') + ' บาท/เดือน (แก้ไขงบได้ในตาราง)');
+}
+
+// ── ลบหมวดงบประมาณ ──────────────────────────────────────────
+function openBudDelCat(){
+  var list = document.getElementById('bud-del-cat-list');
+  list.innerHTML = getBCats().map(function(c){
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg2);border-radius:var(--r);font-size:13px">'
+      + '<span>' + esc(c) + '</span>'
+      + '<button class="btn-sm-r" style="padding:4px 10px;font-size:12px" onclick="confirmDelBudCat(\'' + c + '\')">ลบ</button>'
+      + '</div>';
+  }).join('');
+  document.getElementById('bud-del-cat-m').classList.add('on');
+}
+function closeBudDelCat(){ document.getElementById('bud-del-cat-m').classList.remove('on'); }
+function confirmDelBudCat(cat){
+  if (!confirm('ลบหมวด "' + cat + '" ?\n(รายการที่บันทึกไว้จะยังคงอยู่ แต่หมวดนี้จะหายจากงบประมาณและหน้าบันทึก)')) return;
+  delCatFromAll(cat);
+  closeBudDelCat();
+  renderCS(); renderCC(); renderSetChips(); populateTxFilter(); lsSave();
+  renderBud();
+  showToast('🗑️ ลบหมวด "' + cat + '" แล้ว');
+}
 function renderBudCh(){
   var ctx=document.getElementById('bud-ch');if(!ctx)return;if(budCh)budCh.destroy();
   var cats=getBCats();var m=sBM!==null?sBM:T.getMonth();ensureBY(sBY);var md=buildMD();
