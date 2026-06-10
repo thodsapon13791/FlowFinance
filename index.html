@@ -681,7 +681,27 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg0);color:
 </div>
 <!-- Pay day editor -->
 <div class="epw" id="epw" onclick="if(event.target===this)closeEP()">
-  <div class="epm"><h2>แก้ไขวันเงินเดือนเข้า</h2><div class="epm-sub" id="ep-sub"></div><div class="epm-cw"><div class="chd"><button class="cnb" onclick="epCM(-1)">&#8249;</button><span class="cml" id="ep-ml"></span><button class="cnb" onclick="epCM(1)">&#8250;</button></div><div class="cgr" id="ep-cal"></div></div><div class="epm-info" id="ep-info">เลือกวันที่เงินเข้า</div><div class="epm-acts"><button class="brst" onclick="resetCy()">รีเซ็ต</button><button class="bcan2" onclick="closeEP()">ยกเลิก</button><button class="bsav2" onclick="saveCy()">บันทึก</button></div></div>
+  <div class="epm">
+    <h2>แก้ไขวันเงินเดือนเข้า</h2>
+    <div class="fg" style="margin-bottom:10px">
+      <label style="font-size:11px;color:var(--t2);margin-bottom:4px;display:block">เลือกรอบที่ต้องการแก้ไข</label>
+      <select id="ep-cycle-sel" onchange="epChangeCycle(this.value)" style="width:100%;font-size:13px;padding:7px 10px;border:.5px solid var(--bdr);border-radius:var(--r);background:var(--bg2);color:var(--t1);cursor:pointer"></select>
+    </div>
+    <div class="epm-cw">
+      <div class="chd">
+        <button class="cnb" onclick="epCM(-1)">&#8249;</button>
+        <span class="cml" id="ep-ml"></span>
+        <button class="cnb" onclick="epCM(1)">&#8250;</button>
+      </div>
+      <div id="ep-cal"></div>
+    </div>
+    <div class="epm-info" id="ep-info">เลือกวันที่เงินเข้า</div>
+    <div class="epm-acts">
+      <button class="brst" onclick="resetCy()">รีเซ็ต</button>
+      <button class="bcan2" onclick="closeEP()">ยกเลิก</button>
+      <button class="bsav2" onclick="saveCy()">บันทึก</button>
+    </div>
+  </div>
 </div>
 <!-- Settings: salary editor modal -->
 <div class="mwrap" id="sal-mw" onclick="if(event.target===this)closeSalM()">
@@ -702,6 +722,27 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg0);color:
     <div class="lp-cancel" onclick="closeLPSheet()">ยกเลิก</div>
   </div>
 </div>
+<!-- Cycle Manager Modal -->
+<div class="mwrap" id="cycle-mgr" onclick="if(event.target===this)closeCycleMgr()">
+  <div class="modal">
+    <h2>จัดการรอบเงินเดือน</h2>
+    <p style="font-size:12px;color:var(--t2);margin-bottom:12px">เพิ่มรอบย้อนหลังหรือล่วงหน้าได้ตามต้องการ</p>
+    <!-- รายการรอบปัจจุบัน -->
+    <div id="cycle-mgr-list" style="max-height:240px;overflow-y:auto;margin-bottom:14px"></div>
+    <!-- เพิ่มรอบใหม่ -->
+    <div style="background:var(--bg2);border-radius:var(--r);padding:12px">
+      <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">เพิ่มรอบใหม่</div>
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        <div style="flex:1"><label style="font-size:11px;color:var(--t3);display:block;margin-bottom:4px">เดือน</label><select id="cycle-mo" style="width:100%;padding:7px 10px;font-size:13px;border:.5px solid var(--bdr);border-radius:var(--r);background:var(--bg1);color:var(--t1)"></select></div>
+        <div style="flex:1"><label style="font-size:11px;color:var(--t3);display:block;margin-bottom:4px">ปี</label><select id="cycle-yr" style="width:100%;padding:7px 10px;font-size:13px;border:.5px solid var(--bdr);border-radius:var(--r);background:var(--bg1);color:var(--t1)"></select></div>
+        <button class="btp btn" onclick="doAddCycle()" style="padding:8px 14px;white-space:nowrap">+ เพิ่ม</button>
+      </div>
+    </div>
+    <div class="mact" style="margin-top:14px">
+      <button class="bcan" onclick="closeCycleMgr()">ปิด</button>
+    </div>
+  </div>
+</div>
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 <div class="main" id="ma">
@@ -709,7 +750,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg0);color:
 <div id="pg-db" class="pg on">
   <div class="topbar"><div><h1>Dashboard</h1><div style="font-size:11px;color:var(--t3);margin-top:2px" id="db-greeting"></div></div><button class="btn-add" onclick="openM()"><i class="ti ti-plus"></i> บันทึก</button></div>
   <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px">
-    <div class="cw" id="db-cw"><button class="btn-b" onclick="togDbCy(event)"><i class="ti ti-refresh"></i><span id="db-cyl">พ.ค. 26</span> <i class="ti ti-chevron-down"></i></button><div class="cy-drop" id="db-cy-drop"><div class="drop-hd">รอบเงินเดือน</div><div id="db-dl"></div><div class="drop-ft"><button class="btn-ep" onclick="openEP();closeDbCy()"><i class="ti ti-edit"></i> แก้วันเงินเข้า</button></div></div></div>
+    <div class="cw" id="db-cw"><button class="btn-b" onclick="togDbCy(event)"><i class="ti ti-refresh"></i><span id="db-cyl">พ.ค. 26</span> <i class="ti ti-chevron-down"></i></button><div class="cy-drop" id="db-cy-drop"><div class="drop-hd">รอบเงินเดือน</div><div id="db-dl"></div><div class="drop-ft" style="gap:6px"><button class="btn-ep" onclick="openEP();closeDbCy()"><i class="ti ti-edit"></i> แก้วันเงินเข้า</button><button class="btn-ep" style="color:#7F77DD;border-color:#7F77DD" onclick="openCycleMgr();closeDbCy()"><i class="ti ti-plus"></i> จัดการรอบ</button></div></div></div>
     <div style="width:.5px;height:18px;background:var(--bdr)"></div>
     <button class="qkb on" id="db-qm" onclick="dbQR('month',this)">เดือนนี้</button>
     <button class="qkb" id="db-qq" onclick="dbQR('quarter',this)">3 เดือน</button>
@@ -958,25 +999,22 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg0);color:
 
   <!-- บัญชีผู้ใช้ -->
   <div class="card">
-    <div style="font-size:12px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:.75rem">บัญชีผู้ใช้</div>
-    <div class="set-row">
-      <div style="display:flex;align-items:center;gap:10px">
-        <div id="set-av" style="width:38px;height:38px;border-radius:50%;background:#1D9E75;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0">?</div>
-        <div>
-          <div class="set-label" id="set-uname">กำลังโหลด...</div>
-          <div class="set-sub" id="set-uemail" style="color:var(--t3)"></div>
-        </div>
+    <div style="font-size:12px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:14px">บัญชีผู้ใช้</div>
+    <!-- avatar + name -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:14px;border-bottom:.5px solid var(--bdr)">
+      <div id="set-av" style="width:46px;height:46px;border-radius:50%;background:#1D9E75;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;color:#fff;flex-shrink:0">?</div>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:var(--t1)" id="set-uname">กำลังโหลด...</div>
+        <div style="font-size:12px;color:var(--t3);margin-top:2px" id="set-uemail"></div>
       </div>
-      <button class="sign-out-btn" onclick="signOut()">ออกจากระบบ</button>
     </div>
-  </div>
-
-  <!-- โปรไฟล์ -->
-  <div class="card" style="margin-top:10px">
-    <div style="font-size:12px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:.75rem">โปรไฟล์</div>
-    <div class="set-row"><div><div class="set-label">ชื่อ</div></div><input type="text" id="set-name" style="font-size:12px;padding:5px 8px;border:.5px solid var(--bdr);border-radius:var(--r);background:var(--bg2);color:var(--t1);width:140px" placeholder="ชื่อของคุณ" oninput="saveName()"></div>
-    <div class="set-row"><div><div class="set-label">เงินเดือน / รายรับ</div><div class="set-sub" id="sal-lbl">-</div></div><button class="btn-ep" onclick="openSalM()"><i class="ti ti-edit"></i> แก้ไข</button></div>
-    <div class="set-row"><div><div class="set-label">วันเงินเดือนเข้า</div></div><button class="btn-ep" onclick="openEP()"><i class="ti ti-edit"></i> แก้ไข</button></div>
+    <!-- info rows -->
+    <div class="set-row" style="padding:6px 0"><div class="set-label">เริ่มใช้งาน</div><div style="font-size:12px;color:var(--t2)" id="set-joined">—</div></div>
+    <div class="set-row" style="padding:6px 0;border-bottom:.5px solid var(--bdr);margin-bottom:10px"><div class="set-label">อัพเดทล่าสุด</div><div style="font-size:12px;color:var(--t2)" id="set-lastsync">—</div></div>
+    <!-- logout -->
+    <button onclick="signOut()" style="width:100%;padding:9px;border-radius:var(--r);border:1px solid #D85A30;background:transparent;color:#D85A30;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px">
+      <i class="ti ti-x"></i> ออกจากระบบ
+    </button>
   </div>
 
   <!-- การแสดงผล -->
@@ -985,14 +1023,13 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg0);color:
     <div class="set-row"><div><div class="set-label">โหมดสี</div></div><div class="togwrap"><button class="togopt on" id="set-dk" onclick="setTheme('dark')"><i class="ti ti-moon"></i> มืด</button><button class="togopt" id="set-lt" onclick="setTheme('light')"><i class="ti ti-sun"></i> สว่าง</button></div></div>
   </div>
 
-  <!-- จัดการหมวดหมู่ -->
+  <!-- จัดการหมวดหมู่ + ตั้งค่าจำเป็น/ไม่จำเป็น -->
   <div class="card" style="margin-top:10px">
-    <div style="font-size:12px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:.75rem">จัดการหมวดหมู่</div>
-    <div class="cat-list" id="set-chips" style="margin-bottom:8px"></div>
+    <div style="font-size:12px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">จัดการหมวดหมู่</div>
+    <div style="font-size:11px;color:var(--t3);margin-bottom:8px">กดปุ่ม ✓ = จำเป็น | ✗ = ไม่จำเป็น (ใช้ในหน้าวิเคราะห์)</div>
+    <div id="set-cat-table" style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px"></div>
     <div class="cat-add"><input type="text" id="set-nc" placeholder="หมวดใหม่"><button onclick="addCatSet()">+ เพิ่ม</button></div>
   </div>
-
-  <!-- ข้อมูล -->
   <div class="card" style="margin-top:10px">
     <div style="font-size:12px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:.75rem">ข้อมูล</div>
     <div class="set-row"><div><div class="set-label">Export ข้อมูลทั้งหมด</div><div class="set-sub">CSV ทุกรายการ</div></div><button class="btn-sm-g" onclick="exportAllExcel()"><i class="ti ti-file-spreadsheet"></i> Export</button></div>
@@ -1507,18 +1544,27 @@ function updateNavUser(user) {
     var av = (nm[0]||'U').toUpperCase();
     document.getElementById('nav-email').textContent = nm;
     document.getElementById('nav-av').textContent = av;
-    // Settings page user card
-    var sAv = document.getElementById('set-av');
-    if (sAv) { sAv.textContent = av; }
-    var sNm = document.getElementById('set-uname');
-    if (sNm) sNm.textContent = nm;
-    var sEm = document.getElementById('set-uemail');
-    if (sEm) sEm.textContent = em;
+    // Settings page
+    var sAv = document.getElementById('set-av'); if(sAv) sAv.textContent = av;
+    var sNm = document.getElementById('set-uname'); if(sNm) sNm.textContent = nm;
+    var sEm = document.getElementById('set-uemail'); if(sEm) sEm.textContent = em;
+    // เริ่มใช้งาน — จาก Firebase createdAt
+    var joined = document.getElementById('set-joined');
+    if(joined && user.metadata && user.metadata.creationTime) {
+      var d = new Date(user.metadata.creationTime);
+      joined.textContent = d.toLocaleDateString('th-TH', {day:'numeric', month:'long', year:'numeric'});
+    }
+    // อัพเดทล่าสุด — จาก lastSignInTime
+    var lastSync = document.getElementById('set-lastsync');
+    if(lastSync && user.metadata && user.metadata.lastSignInTime) {
+      var d2 = new Date(user.metadata.lastSignInTime);
+      lastSync.textContent = d2.toLocaleDateString('th-TH', {day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit'});
+    }
     // Dashboard greeting
     var grEl = document.getElementById('db-greeting');
     var hr = new Date().getHours();
     var greet = hr < 12 ? 'อรุณสวัสดิ์' : hr < 17 ? 'สวัสดีตอนบ่าย' : 'สวัสดีตอนเย็น';
-    if (grEl) grEl.textContent = greet + ', ' + nm + ' 👋';
+    if(grEl) grEl.textContent = greet + ', ' + nm + ' 👋';
   } else {
     navU.style.display = 'none';
     soBtn.style.display = 'none';
@@ -1823,6 +1869,7 @@ function addCatToAll(name, defaultAmt) {
   if (!name || CATS.indexOf(name) >= 0) return false;
   CATS.push(name);
   if (!CAT[name]) CAT[name] = {c: catColor(CATS.length-1), n: false};
+  syncCAT();
   // เพิ่มในงบประมาณทุกปี (ถ้าไม่ใช่หมวดที่ exclude)
   if (EXCL_CATS.indexOf(name) < 0) {
     getBYrs().forEach(function(y) {
@@ -1879,9 +1926,55 @@ function addCatSet(){
     showToast('หมวดนี้มีอยู่แล้ว');
   }
 }
-function renderSetChips(){var el=document.getElementById('set-chips');if(!el)return;el.innerHTML=CATS.map(function(c){return'<span class="cat-chip">'+c+'<span class="cat-del" data-c="'+c+'"> x</span></span>';}).join('');el.querySelectorAll('.cat-del').forEach(function(d){d.addEventListener('click',function(){delCat(this.getAttribute('data-c'));});});}
+function renderSetChips(){
+  // legacy chip list (ไม่ใช้แล้ว แต่เก็บไว้ compatibility)
+  var el=document.getElementById('set-chips');
+  if(el){el.innerHTML=CATS.map(function(c){return'<span class="cat-chip">'+c+'<span class="cat-del" data-c="'+c+'"> x</span></span>';}).join('');el.querySelectorAll('.cat-del').forEach(function(d){d.addEventListener('click',function(){delCat(this.getAttribute('data-c'));});});}
+  // ตาราง cat พร้อม toggle จำเป็น
+  syncCAT();
+  var tbl=document.getElementById('set-cat-table');
+  if(!tbl)return;
+  var excl=['เงินเดือน','กองทุน','อื่นๆ'];
+  tbl.innerHTML=CATS.map(function(c){
+    var isNec=catNec(c);
+    var isExcl=excl.indexOf(c)>=0;
+    return'<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--bg2);border-radius:var(--r)">'
+      +'<div style="width:10px;height:10px;border-radius:50%;background:'+catCol(c)+';flex-shrink:0"></div>'
+      +'<span style="flex:1;font-size:13px;color:var(--t1)">'+esc(c)+'</span>'
+      +(isExcl
+        ?'<span style="font-size:10px;color:var(--t3);padding:2px 8px;border-radius:4px;background:var(--bg0)">รายรับ/ออม</span>'
+        :'<button onclick="toggleCatNec(\''+c+'\')" style="padding:3px 10px;font-size:11px;font-weight:600;border-radius:20px;border:1px solid '+(isNec?'#1D9E75':'#EF9F27')+';background:'+(isNec?'#E1F5EE':'#FAEEDA')+';color:'+(isNec?'#0F6E56':'#854F0B')+';cursor:pointer">'+(isNec?'✓ จำเป็น':'✗ ไม่จำเป็น')+'</button>'
+        +'<button onclick="delCat(\''+c+'\')" style="padding:3px 8px;font-size:11px;border-radius:20px;border:1px solid var(--bdr);background:transparent;color:var(--t3);cursor:pointer">ลบ</button>')
+      +'</div>';
+  }).join('');
+}
+
+function toggleCatNec(name){
+  syncCAT();
+  if(!CAT[name])CAT[name]={c:catCol(name),n:false};
+  CAT[name].n=!CAT[name].n;
+  renderSetChips();
+  lsSave();
+  showToast(name+' → '+(CAT[name].n?'จำเป็น':'ไม่จำเป็น'));
+}
 
 var CAT={อาหาร:{c:'#D85A30',n:true},เดินทาง:{c:'#BA7517',n:true},ที่พัก:{c:'#378ADD',n:true},สุขภาพ:{c:'#639922',n:true},ช้อปปิ้ง:{c:'#7F77DD',n:false},บันเทิง:{c:'#EF9F27',n:false},กาแฟ:{c:'#C45228',n:false},เสื้อผ้า:{c:'#D4537E',n:false},อื่นๆ:{c:'#888780',n:false}};
+
+// ── sync CAT กับ CATS เสมอ — หมวดที่ user เพิ่มแต่ไม่มีใน CAT จะได้สีอัตโนมัติ
+function syncCAT(){
+  CATS.forEach(function(c,i){
+    if(!CAT[c]) CAT[c]={c:CAT_PALETTE[i%CAT_PALETTE.length],n:false};
+  });
+}
+
+// ── คืนสีของหมวด (fallback ถ้าไม่มี)
+function catCol(name){
+  syncCAT();
+  return (CAT[name]&&CAT[name].c)||CAT_PALETTE[Math.abs(name.charCodeAt(0))%CAT_PALETTE.length];
+}
+
+// ── ตรวจว่าหมวดเป็น "จำเป็น" ไหม
+function catNec(name){ syncCAT(); return !!(CAT[name]&&CAT[name].n); }
 
 // ====== TRANSACTIONS ======
 var TXS=[
@@ -1958,7 +2051,9 @@ var ACAT=['เงินสด/ออม','กองทุนรวม','หุ�
 var DCAT=['บัตรเครดิต','สินเชื่อบ้าน','สินเชื่อรถ','สินเชื่อส่วนบุคคล','อื่นๆ'];
 var ACAT_COL={'เงินสด/ออม':'#1D9E75','กองทุนรวม':'#378ADD','หุ้น':'#7F77DD','ทองคำ':'#EF9F27','อสังหาริมทรัพย์':'#639922','รถยนต์':'#BA7517','ประกันชีวิต':'#D4537E','เงินบำนาญ':'#C45228','อื่นๆ':'#888780'};
 var DCAT_COL={'บัตรเครดิต':'#D85A30','สินเชื่อบ้าน':'#C0392B','สินเชื่อรถ':'#E74C3C','สินเชื่อส่วนบุคคล':'#F0997B','อื่นๆ':'#888780'};
-var BSD={2026:{assets:[{id:1,name:'เงินออม',cat:'เงินสด/ออม',base:80000,link:'savings',inst:'ธ.กสิกร',acc:'xxx-1-23456-7',contact:'',note:''},{id:2,name:'กองทุนรวม',cat:'กองทุนรวม',base:220000,link:'invest',inst:'กสิกร Asset',acc:'',contact:'',note:'DCA'}],debts:[{id:1,name:'บัตรเครดิต',cat:'บัตรเครดิต',base:0,link:'',val:10000,inst:'SCB',acc:'',contact:'',note:''}]}};
+var _CY_NOW=new Date().getFullYear();
+var BSD={};
+BSD[_CY_NOW]={assets:[{id:1,name:'เงินออม',cat:'เงินสด/ออม',base:80000,link:'savings',inst:'ธ.กสิกร',acc:'xxx-1-23456-7',contact:'',note:''},{id:2,name:'กองทุนรวม',cat:'กองทุนรวม',base:220000,link:'invest',inst:'กสิกร Asset',acc:'',contact:'',note:'DCA'}],debts:[{id:1,name:'บัตรเครดิต',cat:'บัตรเครดิต',base:0,link:'',val:10000,inst:'SCB',acc:'',contact:'',note:''}]};
 var bsmType='asset',bsmEId=null,bsmEYr=null;
 var bsMC=null,bsBarC=null,bsLC=null,bsDnutA=null,bsDnutD=null,bsRtCh=null;
 var bsCurTab='overview';
@@ -2003,15 +2098,119 @@ function buildTD(){
 
 // ====== CYCLE CONFIG ======
 var paydayDay=25;
-var CKS=['2026-1','2026-2','2026-3','2026-4','2026-5','2026-6'];
-var CNS={'2026-1':'ม.ค. 26','2026-2':'ก.พ. 26','2026-3':'มี.ค. 26','2026-4':'เม.ย. 26','2026-5':'พ.ค. 26','2026-6':'มิ.ย. 26'};
-var CNF={'2026-1':'มกราคม 2026','2026-2':'กุมภาพันธ์ 2026','2026-3':'มีนาคม 2026','2026-4':'เมษายน 2026','2026-5':'พฤษภาคม 2026','2026-6':'มิถุนายน 2026'};
-var DEFS={'2026-1':new Date(2025,11,25),'2026-2':new Date(2026,0,25),'2026-3':new Date(2026,1,25),'2026-4':new Date(2026,2,25),'2026-5':new Date(2026,3,25),'2026-6':new Date(2026,4,25)};
-var CIC=['#D85A30','#EF9F27','#1D9E75','#378ADD','#7F77DD','#888780'];
-var CIB=['#FAECE7','#FAEEDA','#E1F5EE','#E6F1FB','#EEEDFE','#F1EFE8'];
+var MONTH_TH_SHORT=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+var MONTH_TH_FULL2=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+var CYC_COLORS=['#D85A30','#EF9F27','#1D9E75','#378ADD','#7F77DD','#888780','#639922','#D4537E'];
+var CYC_BGS=['#FAECE7','#FAEEDA','#E1F5EE','#E6F1FB','#EEEDFE','#F1EFE8','#EEF5E0','#FAECF4'];
+
+function cycKey(y,m){return y+'-'+m;}
+function cycName(y,m){return MONTH_TH_FULL2[m-1]+' '+y;}
+function cycShort(y,m){return MONTH_TH_SHORT[m-1]+' '+(String(y).slice(2));}
+
+// สร้างรอบ default ย้อนหลัง 6 เดือน + ล่วงหน้า 3 เดือน
+function genDefaultCycles(){
+  var now=new Date(),keys=[],names={},shorts={},defs={};
+  for(var i=-6;i<=3;i++){
+    var d=new Date(now.getFullYear(),now.getMonth()+i,1);
+    var y=d.getFullYear(),m=d.getMonth()+1,k=cycKey(y,m);
+    keys.push(k);
+    names[k]=cycName(y,m);
+    shorts[k]=cycShort(y,m);
+    defs[k]=new Date(y,m-2,paydayDay);
+  }
+  return{keys:keys,names:names,shorts:shorts,defs:defs};
+}
+
+// ตรวจและเพิ่ม buffer ล่วงหน้า 3 เดือนอัตโนมัติ
+function ensureFutureBuffer(){
+  var now=new Date();
+  for(var i=1;i<=3;i++){
+    var d=new Date(now.getFullYear(),now.getMonth()+i,1);
+    var y=d.getFullYear(),m=d.getMonth()+1,k=cycKey(y,m);
+    if(CKS.indexOf(k)<0){
+      CKS.push(k);CKS.sort();
+      CNF[k]=cycName(y,m);CNS[k]=cycShort(y,m);
+      DEFS[k]=new Date(y,m-2,paydayDay);
+      CPD[k]=cl(DEFS[k]);CED[k]=false;
+      var idx=CKS.indexOf(k);
+      CIC.splice(idx,0,CYC_COLORS[idx%CYC_COLORS.length]);
+      CIB.splice(idx,0,CYC_BGS[idx%CYC_BGS.length]);
+    }
+  }
+}
+
+// คืน keys ที่แสดงใน dropdown (3 เดือนก่อน + ปัจจุบัน + 3 เดือนหน้า)
+function getVisibleCycles(){
+  ensureFutureBuffer();
+  var now=new Date();
+  var from=new Date(now.getFullYear(),now.getMonth()-3,1);
+  var to=new Date(now.getFullYear(),now.getMonth()+3,1);
+  return CKS.filter(function(k){
+    var p=k.split('-');
+    var d=new Date(parseInt(p[0]),parseInt(p[1])-1,1);
+    return d>=from&&d<=to;
+  });
+}
+var _init=genDefaultCycles();
+var CKS=_init.keys;
+var CNF=_init.names;
+var CNS=_init.shorts;
+var DEFS=_init.defs;
+var CIC=CKS.map(function(_,i){return CYC_COLORS[i%CYC_COLORS.length];});
+var CIB=CKS.map(function(_,i){return CYC_BGS[i%CYC_BGS.length];});
 var CPD={};CKS.forEach(function(k){CPD[k]=cl(DEFS[k]);});
 var CED={};CKS.forEach(function(k){CED[k]=false;});
-var CUR='2026-5';
+
+// ── เพิ่มรอบใหม่ ─────────────────────────────────────────────
+function addCycle(y,m){
+  var k=cycKey(y,m);
+  if(CKS.indexOf(k)>=0){showToast('รอบนี้มีอยู่แล้ว');return false;}
+  CKS.push(k);CKS.sort();
+  CNF[k]=cycName(y,m);CNS[k]=cycShort(y,m);
+  DEFS[k]=new Date(y,m-2,paydayDay);
+  CPD[k]=cl(DEFS[k]);CED[k]=false;
+  var idx=CKS.indexOf(k);
+  CIC.splice(idx,0,CYC_COLORS[idx%CYC_COLORS.length]);
+  CIB.splice(idx,0,CYC_BGS[idx%CYC_BGS.length]);
+  lsSave();showToast('✅ เพิ่มรอบ '+CNF[k]+' แล้ว');
+  renderDbDrop();return true;
+}
+// ── ลบรอบ ────────────────────────────────────────────────────
+function removeCycle(k){
+  if(CKS.length<=1){showToast('ต้องมีอย่างน้อย 1 รอบ');return;}
+  if(k===CUR||k===dbCUR){showToast('ไม่สามารถลบรอบที่กำลังใช้งานอยู่');return;}
+  var idx=CKS.indexOf(k);
+  CKS.splice(idx,1);CIC.splice(idx,1);CIB.splice(idx,1);
+  delete CNF[k];delete CNS[k];delete DEFS[k];delete CPD[k];delete CED[k];
+  lsSave();showToast('🗑️ ลบรอบแล้ว');renderDbDrop();
+}
+// ── modal จัดการรอบ ──────────────────────────────────────────
+function openCycleMgr(){
+  var now=new Date();
+  var yOpts='';for(var y=now.getFullYear()-3;y<=now.getFullYear()+3;y++)yOpts+='<option value="'+y+'"'+(y===now.getFullYear()?' selected':'')+'>'+y+'</option>';
+  var mOpts=MONTH_TH_FULL2.map(function(n,i){return'<option value="'+(i+1)+'"'+((i+1)===(now.getMonth()+1)?' selected':'')+'>'+n+'</option>';}).join('');
+  document.getElementById('cycle-yr').innerHTML=yOpts;
+  document.getElementById('cycle-mo').innerHTML=mOpts;
+  renderCycleMgrList();
+  document.getElementById('cycle-mgr').classList.add('on');
+}
+function closeCycleMgr(){document.getElementById('cycle-mgr').classList.remove('on');}
+function renderCycleMgrList(){
+  document.getElementById('cycle-mgr-list').innerHTML=CKS.map(function(k){
+    var isCur=k===CUR||k===dbCUR;
+    return'<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg2);border-radius:var(--r);margin-bottom:5px">'
+      +'<div><div style="font-size:13px;font-weight:600;color:var(--t1)">'+CNF[k]+'</div><div style="font-size:11px;color:var(--t3)">วันเงินเข้า: '+fds(CPD[k])+'</div></div>'
+      +(isCur?'<span style="font-size:11px;color:#7F77DD;font-weight:600">ใช้งานอยู่</span>':'<button class="btn-sm-r" style="padding:4px 10px;font-size:11px" onclick="removeCycle(\''+k+'\');renderCycleMgrList()">ลบ</button>')
+      +'</div>';
+  }).join('');
+}
+function doAddCycle(){
+  var y=parseInt(document.getElementById('cycle-yr').value);
+  var m=parseInt(document.getElementById('cycle-mo').value);
+  if(addCycle(y,m)) renderCycleMgrList();
+}
+var CUR=cycKey(new Date().getFullYear(), new Date().getMonth()+1);
+var epTmp=null, epM=null;
 function gcr(k){var i=CKS.indexOf(k),s=CPD[k];if(i<CKS.length-1)return{s:s,e:new Date(CPD[CKS[i+1]].getTime()-86400000)};return{s:s,e:cl(T)};}
 function initAR(){var r=gcr(CUR);SS=r.s;SE=r.e;updRL();updStat();}
 
@@ -2269,12 +2468,17 @@ function attachTxEvents(container) {
 }
 
 // ====== DASHBOARD ======
-var dbSS=null,dbSE=null,dbCdOpen=false,dbCUR='2026-5';
+var dbSS=null,dbSE=null,dbCdOpen=false,dbCUR=cycKey(new Date().getFullYear(), new Date().getMonth()+1);
 function togDbCy(e){e.stopPropagation();dbCdOpen=!dbCdOpen;if(dbCdOpen)renderDbDrop();document.getElementById('db-cy-drop').classList.toggle('on',dbCdOpen);}
 function closeDbCy(){dbCdOpen=false;document.getElementById('db-cy-drop').classList.remove('on');}
 function renderDbDrop(){
-  var i5=CKS.indexOf('2026-5');
-  document.getElementById('db-dl').innerHTML=CKS.map(function(k,i){var r=gcr(k),iS=k===dbCUR,iC=k==='2026-5',iP=i<i5;var bt=iC?'ปัจจุบัน':iP?'ก่อนหน้า':'ถัดไป',bb=iC?'#7F77DD':iP?'var(--bg2)':'#E1F5EE',bc=iC?'#fff':iP?'var(--t3)':'#0F6E56';return'<div class="cdi'+(iS?' on':'')+'" data-k="'+k+'"><div class="cdi-ic" style="background:'+CIB[i]+'"><i class="ti ti-calendar-due" style="color:'+CIC[i]+'"></i></div><div style="flex:1;min-width:0"><div class="cdi-nm'+(iS?' cur':'')+'">'+CNF[k]+'</div><div class="cdi-rg">'+fds(r.s)+' - '+fds(r.e)+'</div></div><span class="cdi-bd" style="background:'+bb+';color:'+bc+'">'+bt+'</span></div>';}).join('');
+  var vis=getVisibleCycles();
+  var curK=cycKey(new Date().getFullYear(),new Date().getMonth()+1);
+  document.getElementById('db-dl').innerHTML=vis.map(function(k){
+    var i=CKS.indexOf(k),r=gcr(k),iS=k===dbCUR,iC=k===curK,iP=k<curK;
+    var bt=iC?'ปัจจุบัน':iP?'ก่อนหน้า':'ถัดไป',bb=iC?'#7F77DD':iP?'var(--bg2)':'#E1F5EE',bc=iC?'#fff':iP?'var(--t3)':'#0F6E56';
+    return'<div class="cdi'+(iS?' on':'')+'" data-k="'+k+'"><div class="cdi-ic" style="background:'+CIB[i]+'"><i class="ti ti-calendar-due" style="color:'+CIC[i]+'"></i></div><div style="flex:1;min-width:0"><div class="cdi-nm'+(iS?' cur':'')+'">'+CNF[k]+'</div><div class="cdi-rg">'+fds(r.s)+' - '+fds(r.e)+'</div></div><span class="cdi-bd" style="background:'+bb+';color:'+bc+'">'+bt+'</span></div>';
+  }).join('');
   document.getElementById('db-dl').querySelectorAll('.cdi').forEach(function(el){el.addEventListener('click',function(){dbCUR=this.getAttribute('data-k');closeDbCy();document.getElementById('db-cyl').textContent=CNS[dbCUR];clearDbQ();rdDB();});});
 }
 function clearDbQ(){['db-qm','db-qq','db-qy','db-qc'].forEach(function(id){var b=document.getElementById(id);if(b)b.classList.remove('on');});}
@@ -2286,7 +2490,11 @@ function rdDB(){
   // Greeting
   var h=T.getHours();var gr=h<12?'อรุณสวัสดิ์':h<18?'สวัสดีตอนบ่าย':'สวัสดีตอนเย็น';
   var grEl=document.getElementById('db-greeting');
-  if(grEl){var nm=userName?' '+userName:'';grEl.textContent=gr+nm+' — '+fd(T);}
+  if(grEl){
+    var fbUser=window._FB&&window._FB.auth&&window._FB.auth.currentUser;
+    var nm=fbUser&&fbUser.displayName?fbUser.displayName:(userName||'');
+    grEl.textContent=gr+(nm?' '+nm:'');
+  }
 
   var txs=getTxsDB();var inc=0,sav=0,inv=0,exp=0;
   txs.forEach(function(t){if(t.tp==='income')inc+=t.amt;else if(t.tp==='savings')sav+=t.amt;else if(t.tp==='invest')inv+=t.amt;else if(t.tp==='expense')exp+=t.amt;});
@@ -2479,14 +2687,14 @@ function renderGoals(){
     return;
   }
   el.innerHTML=GOALS.map(function(g){var cu=calcGC(g);var pct=Math.min(Math.round(cu/g.tg*100),100);var mo=g.mo>0?Math.ceil((g.tg-cu)/g.mo):'-';var ll=g.link==='savings'?'🔗 ออม':g.link==='invest'?'🔗 ลงทุน':'';return'<div class="gc"><div class="gt"><span>'+esc(g.nm)+'</span><div style="display:flex;gap:5px"><button class="btn-sm" data-gid="'+g.id+'" data-a="edit">✎</button><button class="btn-sm" data-gid="'+g.id+'" data-a="del" style="color:#D85A30">🗑</button></div></div><div class="gs">ตั้งต้น '+f(g.base||0)+' '+ll+' · เก็บต่อเดือน '+f(g.mo)+' · อีก ~'+mo+' เดือน</div><div class="gp"><div class="gpf" style="width:'+pct+'%;background:'+g.col+'"></div></div><div class="gn"><span style="font-size:14px;font-weight:700;color:'+g.col+'">'+f(cu)+'</span><span>'+pct+'% · เป้า '+f(g.tg)+'</span></div></div>';}).join('')+'<button style="display:flex;align-items:center;gap:5px;padding:10px;font-size:12px;border:.5px dashed var(--bdr);border-radius:var(--r);background:transparent;color:var(--t2);cursor:pointer;width:100%;justify-content:center;margin-top:4px" id="add-gb">+ เพิ่มเป้าหมายใหม่</button>';
-  el.querySelectorAll('[data-a="edit"]').forEach(function(b){b.addEventListener('click',function(){openGM(parseInt(this.getAttribute('data-gid')));});});
+  el.querySelectorAll('[data-a="edit"]').forEach(function(b){b.addEventListener('click',function(){openGM(this.getAttribute('data-gid'));});});
   el.querySelectorAll('[data-a="del"]').forEach(function(b){b.addEventListener('click',async function(){var id=parseInt(this.getAttribute('data-gid'));if(!confirm('ลบเป้าหมายนี้?'))return;SyncManager.setSyncDot('ing');try{if(AuthManager.getUser())await DatabaseService.deleteGoal(id);}catch(e){showToast('⚠️ ลบไม่สำเร็จ');SyncManager.setSyncDot('err');return;}GOALS=GOALS.filter(function(g){return g.id!==id;});lsSave();SyncManager.setSyncDot('ok');renderGoals();});});
   document.getElementById('add-gb').addEventListener('click',function(){openGM();});
 }
 function openGM(id){
   eGID=id||null;
   document.getElementById('gm-t').textContent=id?'แก้ไขเป้าหมาย':'เพิ่มเป้าหมาย';
-  var g=id?GOALS.find(function(x){return x.id===id;}):null;
+  var g=id?GOALS.find(function(x){return String(x.id)===String(id);}):null;
   document.getElementById('g-name').value=g?g.nm:'';
   document.getElementById('g-tg').value=g?g.tg:'';
   document.getElementById('g-base').value=g?(g.base||0):'';
@@ -2513,10 +2721,11 @@ function gData(s,e){
 
 function rAna(){
   if(!SS||!SE)return;
+  syncCAT();
   var data=gData(SS,SE),days=Math.round((SE-SS)/864e5)+1;
   var sorted=Object.entries(data.cats).sort(function(a,b){return b[1]-a[1];});
   var totE=sorted.reduce(function(s,e){return s+e[1];},0)||1;
-  var nesA=sorted.reduce(function(s,e){return s+(CAT[e[0]]&&CAT[e[0]].n?e[1]:0);},0),unnA=totE-nesA;
+  var nesA=sorted.reduce(function(s,e){return s+(catNec(e[0])?e[1]:0);},0),unnA=totE-nesA;
 
   if(atab==='exp'){
     var rem=data.inc-data.sav-data.inv-totE;
@@ -2525,14 +2734,14 @@ function rAna(){
       '<div class="mc"><div class="mc-l">จำเป็น</div><div class="mc-v" style="color:#1D9E75">'+f(nesA)+'</div><div style="font-size:10px;color:var(--t3)">'+Math.round(nesA/totE*100)+'%</div></div>'+
       '<div class="mc"><div class="mc-l">ไม่จำเป็น</div><div class="mc-v" style="color:#EF9F27">'+f(unnA)+'</div><div style="font-size:10px;color:var(--t3)">'+Math.round(unnA/totE*100)+'%</div></div>';
     var dCtx=document.getElementById('dnut');if(dnut)dnut.destroy();
-    var dc=sorted.map(function(e){return(CAT[e[0]]&&CAT[e[0]].c)||'#888';});
+    var dc=sorted.map(function(e){return catCol(e[0]);});
     dnut=new Chart(dCtx,{type:'doughnut',data:{labels:sorted.map(function(e){return e[0];}),datasets:[{data:sorted.map(function(e){return Math.round(e[1]);}),backgroundColor:dc,borderWidth:2,borderColor:'var(--bg1)'}]},options:{responsive:true,maintainAspectRatio:false,cutout:'58%',layout:{padding:50},plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ctx.label+': '+f(ctx.raw)+' ('+Math.round(ctx.raw/totE*100)+'%)';}}}}},});
     document.getElementById('dtot').textContent=f(totE);
     var np=Math.round(nesA/totE*100),up=100-np;
     document.getElementById('nsub').textContent='จำเป็น '+f(nesA)+' ('+np+'%) vs ไม่จำเป็น '+f(unnA)+' ('+up+'%)';
     document.getElementById('nbar').innerHTML='<div class="ns" style="width:'+np+'%;background:#1D9E75">'+(np>12?np+'%':'')+'</div><div class="ns" style="width:'+up+'%;background:#EF9F27">'+(up>12?up+'%':'')+'</div>';
-    var ni=sorted.filter(function(e){return CAT[e[0]]&&CAT[e[0]].n;}),ui=sorted.filter(function(e){return!CAT[e[0]]||!CAT[e[0]].n;});
-    function mkR(k,v,isN){return'<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:.5px solid var(--bdr)"><div style="width:10px;height:10px;border-radius:50%;background:'+((CAT[k]&&CAT[k].c)||'#888')+';flex-shrink:0"></div><span style="flex:1;font-size:13px;color:var(--t1)">'+k+'</span><span style="font-size:12px;font-weight:600;color:'+(isN?'#1D9E75':'#EF9F27')+'">'+f(v)+'</span><span style="font-size:11px;color:var(--t3);width:36px;text-align:right">'+Math.round(v/totE*100)+'%</span></div>';}
+    var ni=sorted.filter(function(e){return catNec(e[0]);}),ui=sorted.filter(function(e){return!catNec(e[0]);});
+    function mkR(k,v,isN){return'<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:.5px solid var(--bdr)"><div style="width:10px;height:10px;border-radius:50%;background:'+catCol(k)+';flex-shrink:0"></div><span style="flex:1;font-size:13px;color:var(--t1)">'+k+'</span><span style="font-size:12px;font-weight:600;color:'+(isN?'#1D9E75':'#EF9F27')+'">'+f(v)+'</span><span style="font-size:11px;color:var(--t3);width:36px;text-align:right">'+Math.round(v/totE*100)+'%</span></div>';}
     document.getElementById('nlist').innerHTML='<div style="font-size:11px;font-weight:700;color:#0F6E56;margin-bottom:6px;text-transform:uppercase">จำเป็น</div>'+ni.map(function(e){return mkR(e[0],e[1],true);}).join('')+'<div style="font-size:11px;font-weight:700;color:#854F0B;margin-top:12px;margin-bottom:6px;text-transform:uppercase">ไม่จำเป็น</div>'+ui.map(function(e){return mkR(e[0],e[1],false);}).join('');
     rPareto(sorted,totE);rVel(sorted,totE,data);rSug(data,totE,unnA);
   }
@@ -2586,15 +2795,97 @@ function renderAI(data,totE,unnA){
   document.getElementById('aic').innerHTML=cards.map(function(c){return'<div class="ai-card" style="border-left-color:'+c.color+'"><div class="ai-title" style="color:'+c.color+'">'+c.title+'</div><div class="ai-body">'+c.body+'</div></div>';}).join('');
 }
 
-function rPareto(sorted,totE){var ctx=document.getElementById('pch');if(!ctx)return;if(pch)pch.destroy();var cum=0,cumP=sorted.map(function(e){cum+=e[1];return Math.round(cum/totE*100);});var idx=cumP.findIndex(function(p){return p>=80;});if(idx>=0)document.getElementById('pins').textContent='"'+sorted.slice(0,idx+1).map(function(e){return e[0];}).join('", "')+'" รวม '+cumP[idx]+'%';else document.getElementById('pins').textContent='';pch=new Chart(ctx,{type:'bar',data:{labels:sorted.map(function(e){return e[0];}),datasets:[{type:'bar',data:sorted.map(function(e){return Math.round(e[1]);}),backgroundColor:sorted.map(function(e){return(CAT[e[0]]&&CAT[e[0]].c)||'#D85A30';}),borderRadius:3,yAxisID:'y'},{type:'line',data:cumP,borderColor:'#7F77DD',backgroundColor:'transparent',pointBackgroundColor:'#7F77DD',pointRadius:3,borderWidth:2,yAxisID:'y2'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:10}},grid:{display:false}},y:{ticks:{font:{size:10},callback:function(v){return v>=1000?(v/1000)+'k':v;}},position:'left',grid:{color:gridColor()}},y2:{ticks:{font:{size:10},callback:function(v){return v+'%';}},min:0,max:100,position:'right',grid:{display:false}}}}});}
+function rPareto(sorted,totE){var ctx=document.getElementById('pch');if(!ctx)return;if(pch)pch.destroy();var cum=0,cumP=sorted.map(function(e){cum+=e[1];return Math.round(cum/totE*100);});var idx=cumP.findIndex(function(p){return p>=80;});if(idx>=0)document.getElementById('pins').textContent='"'+sorted.slice(0,idx+1).map(function(e){return e[0];}).join('", "')+'" รวม '+cumP[idx]+'%';else document.getElementById('pins').textContent='';pch=new Chart(ctx,{type:'bar',data:{labels:sorted.map(function(e){return e[0];}),datasets:[{type:'bar',data:sorted.map(function(e){return Math.round(e[1]);}),backgroundColor:sorted.map(function(e){return catCol(e[0]);}),borderRadius:3,yAxisID:'y'},{type:'line',data:cumP,borderColor:'#7F77DD',backgroundColor:'transparent',pointBackgroundColor:'#7F77DD',pointRadius:3,borderWidth:2,yAxisID:'y2'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:10}},grid:{display:false}},y:{ticks:{font:{size:10},callback:function(v){return v>=1000?(v/1000)+'k':v;}},position:'left',grid:{color:gridColor()}},y2:{ticks:{font:{size:10},callback:function(v){return v+'%';}},min:0,max:100,position:'right',grid:{display:false}}}}});}
 
-function rVel(sorted,totE,data){var pk=CKS[CKS.indexOf(CUR)-1];var pd=pk?gData(gcr(pk).s,gcr(pk).e):null;var pTot=pd?Object.values(pd.cats).reduce(function(a,b){return a+b;},0):0;var oc=pTot?Math.round((totE-pTot)/pTot*100):0;document.getElementById('vdesc').textContent='เปรียบรอบนี้ vs '+(pk?CNF[pk]:'รอบก่อน')+' — '+(oc>=0?'▲':'▼')+' '+Math.abs(oc)+'%';document.getElementById('vins').textContent=oc>10?'⚠️ รายจ่ายเพิ่มขึ้น '+oc+'%':oc<-5?'✅ รายจ่ายลดลง '+Math.abs(oc)+'%':'รายจ่ายใกล้เคียงรอบก่อน';var top6=sorted.slice(0,6);var ctx=document.getElementById('vch');if(vch)vch.destroy();vch=new Chart(ctx,{type:'bar',data:{labels:top6.map(function(e){return e[0];}),datasets:[{label:'รอบนี้',data:top6.map(function(e){return Math.round(e[1]);}),backgroundColor:top6.map(function(e){return(CAT[e[0]]&&CAT[e[0]].c)||'#888';}),borderRadius:3},{label:'รอบก่อน',data:top6.map(function(e){return Math.round((pd&&pd.cats[e[0]])||0);}),backgroundColor:top6.map(function(e){return((CAT[e[0]]&&CAT[e[0]].c)||'#888')+'55';}),borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:10},boxWidth:10}}},scales:{x:{ticks:{font:{size:10}},grid:{display:false}},y:{ticks:{font:{size:10},callback:function(v){return v>=1000?(v/1000)+'k':v;}},grid:{color:gridColor()}}}}});document.getElementById('vlist').innerHTML=top6.map(function(e){var prev=(pd&&pd.cats[e[0]])||0;var chg=prev>0?Math.round((e[1]-prev)/prev*100):0;var col=chg>10?'#D85A30':chg>0?'#EF9F27':'#1D9E75';return'<div class="vrow"><div style="font-size:12px;width:66px;color:var(--t1);font-weight:500">'+e[0]+'</div><div class="vbb"><div class="vbf" style="width:'+Math.min(100,Math.abs(chg)*3)+'%;background:'+col+'"></div></div><div style="font-size:11px;font-weight:700;width:46px;text-align:right;color:'+col+'">'+(chg>0?'+':'')+chg+'%</div></div>';}).join('');}
+function rVel(sorted,totE,data){var pk=CKS[CKS.indexOf(CUR)-1];var pd=pk?gData(gcr(pk).s,gcr(pk).e):null;var pTot=pd?Object.values(pd.cats).reduce(function(a,b){return a+b;},0):0;var oc=pTot?Math.round((totE-pTot)/pTot*100):0;document.getElementById('vdesc').textContent='เปรียบรอบนี้ vs '+(pk?CNF[pk]:'รอบก่อน')+' — '+(oc>=0?'▲':'▼')+' '+Math.abs(oc)+'%';document.getElementById('vins').textContent=oc>10?'⚠️ รายจ่ายเพิ่มขึ้น '+oc+'%':oc<-5?'✅ รายจ่ายลดลง '+Math.abs(oc)+'%':'รายจ่ายใกล้เคียงรอบก่อน';var top6=sorted.slice(0,6);var ctx=document.getElementById('vch');if(vch)vch.destroy();vch=new Chart(ctx,{type:'bar',data:{labels:top6.map(function(e){return e[0];}),datasets:[{label:'รอบนี้',data:top6.map(function(e){return Math.round(e[1]);}),backgroundColor:top6.map(function(e){return catCol(e[0]);}),borderRadius:3},{label:'รอบก่อน',data:top6.map(function(e){return Math.round((pd&&pd.cats[e[0]])||0);}),backgroundColor:top6.map(function(e){return catCol(e[0])+'55';}),borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:10},boxWidth:10}}},scales:{x:{ticks:{font:{size:10}},grid:{display:false}},y:{ticks:{font:{size:10},callback:function(v){return v>=1000?(v/1000)+'k':v;}},grid:{color:gridColor()}}}}});document.getElementById('vlist').innerHTML=top6.map(function(e){var prev=(pd&&pd.cats[e[0]])||0;var chg=prev>0?Math.round((e[1]-prev)/prev*100):0;var col=chg>10?'#D85A30':chg>0?'#EF9F27':'#1D9E75';return'<div class="vrow"><div style="font-size:12px;width:66px;color:var(--t1);font-weight:500">'+e[0]+'</div><div class="vbb"><div class="vbf" style="width:'+Math.min(100,Math.abs(chg)*3)+'%;background:'+col+'"></div></div><div style="font-size:11px;font-weight:700;width:46px;text-align:right;color:'+col+'">'+(chg>0?'+':'')+chg+'%</div></div>';}).join('');}
 
-function rSug(data,totE,unnA){var sugs=[];if(data.cats['กาแฟ']>2000)sugs.push({bg:'#FAEEDA',t:'กาแฟ '+f(data.cats['กาแฟ'])+' — สูงเกินไป',d:'กาแฟทุกวัน ≈฿3,000/เดือน ลองทำที่บ้านบ้าง',tag:'ควรลด',tb:'#FAECE7',tc2:'#993C1D'});if(data.cats['ช้อปปิ้ง']&&data.inc&&data.cats['ช้อปปิ้ง']/data.inc>0.08)sugs.push({bg:'#EEEDFE',t:'ช้อปปิ้ง '+f(data.cats['ช้อปปิ้ง']),d:'ช้อปปิ้งเกิน 8% ของรายรับ ลองตั้งงบต่อเดือน',tag:'ควรลด',tb:'#FAECE7',tc2:'#993C1D'});if(data.cats['บันเทิง']>1500)sugs.push({bg:'#FAEEDA',t:'บันเทิง '+f(data.cats['บันเทิง']),d:'ตรวจ Subscription ที่ไม่ได้ใช้ อาจประหยัดได้ 200-500฿/เดือน',tag:'ตรวจสอบ',tb:'#FAEEDA',tc2:'#854F0B'});var sp=data.inc?Math.round((data.sav+data.inv)/data.inc*100):0;if(sp<30)sugs.push({bg:'#E6F1FB',t:'อัตราออม '+sp+'%',d:'ลดรายจ่ายไม่จำเป็น '+f(unnA)+' ลง 20% จะออมเพิ่ม ~'+f(Math.round(unnA*0.2)),tag:'แนะนำ',tb:'#E6F1FB',tc2:'#185FA5'});if(!sugs.length)sugs.push({bg:'#E1F5EE',t:'การใช้จ่ายดี ✅',d:'รูปแบบการใช้จ่ายสมดุลดีแล้ว ทำต่อไป!',tag:'โอเค',tb:'#E1F5EE',tc2:'#0F6E56'});document.getElementById('sugl').innerHTML=sugs.map(function(s){return'<div class="si"><div class="sic" style="background:'+s.bg+'">✦</div><div><div class="st2">'+s.t+'</div><div class="sd">'+s.d+'</div><span class="stag" style="background:'+s.tb+';color:'+s.tc2+'">'+s.tag+'</span></div></div>';}).join('');}
+function rSug(data,totE,unnA){
+  var sugs=[];
+  var inc=data.inc||1;
+  var sp=inc?Math.round((data.sav+data.inv)/inc*100):0;
+  var dailyAvg=Math.round(totE/Math.max(1,Math.round((SE-SS)/864e5)+1));
+
+  // วิเคราะห์ทุกหมวดโดย % ของรายรับ (ไม่ hardcode ชื่อ)
+  var sorted=Object.entries(data.cats).sort(function(a,b){return b[1]-a[1];});
+  sorted.forEach(function(e){
+    var cat=e[0],amt=e[1],pct=Math.round(amt/inc*100);
+    var isNec=catNec(cat);
+    // หมวดไม่จำเป็นที่เกิน 10% ของรายรับ
+    if(!isNec&&pct>10){
+      sugs.push({bg:'#FAEEDA',t:cat+' '+f(amt)+' ('+pct+'% ของรายรับ)',d:'หมวดนี้เกิน 10% ของรายรับ ลองตั้งงบประมาณและติดตามให้ใกล้ชิด',tag:'ควรลด',tb:'#FAECE7',tc2:'#993C1D'});
+    }
+    // หมวดจำเป็นที่เกิน 40% ของรายรับ
+    if(isNec&&pct>40){
+      sugs.push({bg:'#E6F1FB',t:cat+' '+f(amt)+' ('+pct+'% ของรายรับ)',d:'หมวดจำเป็นนี้สูงผิดปกติ อาจมีทางลดได้บ้าง',tag:'ตรวจสอบ',tb:'#FAEEDA',tc2:'#854F0B'});
+    }
+  });
+
+  // อัตราออม
+  if(sp<20) sugs.push({bg:'#FAECE7',t:'อัตราออม+ลงทุน '+sp+'% — ต่ำ',d:'แนะนำออม 20-30% ของรายรับ ลองลดรายจ่ายไม่จำเป็น '+f(unnA)+' ลง 20% จะออมเพิ่ม ~'+f(Math.round(unnA*0.2)),tag:'สำคัญ',tb:'#FAECE7',tc2:'#993C1D'});
+  else if(sp<30) sugs.push({bg:'#FAEEDA',t:'อัตราออม+ลงทุน '+sp+'%',d:'ดีแล้ว! ถ้าเพิ่มได้ถึง 30% จะสร้างความมั่งคั่งได้เร็วขึ้น',tag:'แนะนำ',tb:'#FAEEDA',tc2:'#854F0B'});
+
+  // recurring สูง
+  var recTotal=TXS.filter(function(t){return t.rec&&t.tp==='expense';}).reduce(function(s,t){return s+t.amt;},0);
+  var recPct=inc?Math.round(recTotal/inc*100):0;
+  if(recPct>30) sugs.push({bg:'#EEEDFE',t:'รายจ่ายประจำ '+f(recTotal)+' ('+recPct+'%)',d:'รายจ่ายประจำสูงถึง '+recPct+'% ของรายรับ ลองทบทวน Subscription ที่ไม่ได้ใช้',tag:'ตรวจสอบ',tb:'#EEEDFE',tc2:'#3C3489'});
+
+  // ดีมาก
+  if(!sugs.length) sugs.push({bg:'#E1F5EE',t:'การใช้จ่ายสมดุลดี ✅',d:'อัตราออม '+sp+'% | ไม่มีหมวดที่ใช้เกินสัดส่วน ทำต่อไปนะครับ!',tag:'โอเค',tb:'#E1F5EE',tc2:'#0F6E56'});
+
+  document.getElementById('sugl').innerHTML=sugs.slice(0,5).map(function(s){return'<div class="si"><div class="sic" style="background:'+s.bg+'">✦</div><div><div class="st2">'+s.t+'</div><div class="sd">'+s.d+'</div><span class="stag" style="background:'+s.tb+';color:'+s.tc2+'">'+s.tag+'</span></div></div>';}).join('');
+}
 
 // ====== SANKEY ======
-function drawSankey(data){var canvas=document.getElementById('skc');if(!canvas)return;var W=canvas.parentElement.offsetWidth-2,H=Math.max(300,W*0.5);canvas.width=W*2;canvas.height=H*2;canvas.style.width=W+'px';canvas.style.height=H+'px';var ctx=canvas.getContext('2d');ctx.scale(2,2);var dark=isDark,tc=dark?'rgba(255,255,255,.88)':'rgba(10,10,10,.82)',tc2=dark?'rgba(255,255,255,.44)':'rgba(10,10,10,.5)';
-  var ribAlpha=dark?0.32:0.55,ribAlpha2=dark?0.55:0.75,ribAlpha3=dark?0.38:0.55,ribAlpha4=dark?0.5:0.7;ctx.clearRect(0,0,W,H);var inc=data.inc||1,sav=data.sav||0,inv=data.inv||0;var expArr=Object.entries(data.cats).sort(function(a,b){return b[1]-a[1];});var totExp=expArr.reduce(function(s,e){return s+e[1];},0)||1;var SRCS=[{lbl:'เงินเดือน',amt:Math.round(inc*0.844),col:'#1D9E75'},{lbl:'อื่นๆ',amt:Math.round(inc*0.156),col:'#5DCAA5'}];var EXPS=expArr.map(function(e,i){return{lbl:e[0],amt:e[1],col:(['#D85A30','#C45228','#BA7517','#EF9F27','#639922','#888780'])[i%6]};});var NW=11,GAP=7,LLBL=64,RLBL=74,C0=LLBL,C1=W*0.28,C2=W*0.55,C3=W-RLBL-NW,TOP=26,BOT=H-14,AVAIL=BOT-TOP,sc=(AVAIL*0.85)/inc;var srcs=SRCS.map(function(s){return{lbl:s.lbl,amt:s.amt,col:s.col,h:Math.max(7,Math.round(s.amt*sc))};});var sy=TOP+(AVAIL-srcs.reduce(function(a,n){return a+n.h;},0)-(srcs.length-1)*GAP)/2;srcs.forEach(function(n){n.y=sy;sy+=n.h+GAP;});var incH=Math.round(inc*sc),incY=TOP+(AVAIL-incH)/2;var savH=Math.max(7,Math.round(sav*sc)),invH=Math.max(7,Math.round(inv*sc)),expH=Math.max(7,incH-savH-invH-GAP*2);var savY=incY,invY=incY+savH+GAP,expY=incY+savH+invH+GAP*2;var subs=EXPS.map(function(e){return{lbl:e.lbl,amt:e.amt,col:e.col,h:Math.max(4,Math.round(e.amt/totExp*expH))};});var tSH=subs.reduce(function(a,n){return a+n.h;},0),subGap=subs.length>1?Math.max(2,Math.floor((expH-tSH)/(subs.length-1))):0;var ey=expY;subs.forEach(function(n){n.y=ey;ey+=n.h+subGap;});function rib(x1,y1,h1,x2,y2,h2,col,alpha){var cp=(x2-x1)*0.45;ctx.beginPath();ctx.moveTo(x1,y1);ctx.bezierCurveTo(x1+cp,y1,x2-cp,y2,x2,y2);ctx.lineTo(x2,y2+h2);ctx.bezierCurveTo(x2-cp,y2+h2,x1+cp,y1+h1,x1,y1+h1);ctx.closePath();ctx.fillStyle=rba(col,alpha);ctx.fill();}function nd(x,y,h,col){ctx.fillStyle=col;ctx.beginPath();ctx.roundRect(x,y,NW,h,3);ctx.fill();}function lbl(text,x,y,sz,col,align){ctx.save();ctx.font=sz+'px sans-serif';ctx.fillStyle=col;ctx.textAlign=align||'left';ctx.textBaseline='middle';ctx.fillText(text,x,y);ctx.restore();}var off=incY;srcs.forEach(function(n){rib(C0+NW,n.y,n.h,C1,off,n.h,n.col,ribAlpha);off+=n.h;});rib(C1+NW,savY,savH,C2,savY,savH,'#378ADD',ribAlpha2);rib(C1+NW,invY,invH,C2,invY,invH,'#7F77DD',ribAlpha2);rib(C1+NW,expY,expH,C2,expY,expH,'#D85A30',ribAlpha3);rib(C2+NW,savY,savH,C3,savY,savH,'#378ADD',ribAlpha2);rib(C2+NW,invY,invH,C3,invY,invH,'#7F77DD',ribAlpha2);subs.forEach(function(n){rib(C2+NW,n.y,n.h,C3,n.y,n.h,n.col,ribAlpha4);});srcs.forEach(function(n){nd(C0,n.y,n.h,n.col);});nd(C1,incY,incH,'#1D9E75');nd(C2,savY,savH,'#378ADD');nd(C2,invY,invH,'#7F77DD');nd(C2,expY,expH,'#D85A30');nd(C3,savY,savH,'#378ADD');nd(C3,invY,invH,'#7F77DD');subs.forEach(function(n){nd(C3,n.y,n.h,n.col);});srcs.forEach(function(n){lbl(n.lbl,C0-4,n.y+n.h/2-5,10,tc,'right');lbl(f(n.amt),C0-4,n.y+n.h/2+6,9,tc2,'right');});lbl(f(inc),C1+NW/2,incY-1,11,'#1D9E75','center');var mx=C2+NW+4;lbl('ออม',mx,savY+savH/2,9,'#185FA5');lbl('ลงทุน',mx,invY+invH/2,9,'#534AB7');lbl('รายจ่าย',mx,expY+expH/2,9,'#993C1D');var rx=C3+NW+5;lbl(f(sav),rx,savY+savH/2,9,tc2);lbl(f(inv),rx,invY+invH/2,9,tc2);subs.forEach(function(n){lbl(n.lbl,rx,n.y+n.h/2,9,tc);});document.getElementById('sksum').innerHTML='<div class="mc"><div class="mc-l">รายรับ</div><div class="mc-v" style="color:#1D9E75">'+f(inc)+'</div></div><div class="mc"><div class="mc-l">ออม+ลงทุน</div><div class="mc-v" style="color:#378ADD">'+f(sav+inv)+'</div></div><div class="mc"><div class="mc-l">รายจ่าย</div><div class="mc-v" style="color:#D85A30">'+f(totExp)+'</div></div>';}
+function drawSankey(data){
+  var canvas=document.getElementById('skc');if(!canvas)return;
+  var W=canvas.parentElement.offsetWidth-2,H=Math.max(300,W*0.5);
+  canvas.width=W*2;canvas.height=H*2;canvas.style.width=W+'px';canvas.style.height=H+'px';
+  var ctx=canvas.getContext('2d');ctx.scale(2,2);
+  var dark=isDark,tc=dark?'rgba(255,255,255,.88)':'rgba(10,10,10,.82)',tc2=dark?'rgba(255,255,255,.44)':'rgba(10,10,10,.5)';
+  var ribAlpha=dark?0.32:0.55,ribAlpha2=dark?0.55:0.75,ribAlpha3=dark?0.38:0.55,ribAlpha4=dark?0.5:0.7;
+  ctx.clearRect(0,0,W,H);
+  var inc=data.inc||1,sav=data.sav||0,inv=data.inv||0;
+  var expArr=Object.entries(data.cats).sort(function(a,b){return b[1]-a[1];});
+  var totExp=expArr.reduce(function(s,e){return s+e[1];},0)||1;
+
+  // ── คำนวณ income sources จากข้อมูลจริง ──
+  var incByCat={};
+  TXS.filter(function(t){
+    if(t.tp!=='income')return false;
+    if(!SS||!SE)return true;
+    var d=parseDate(t.dt);return d>=SS&&d<=SE;
+  }).forEach(function(t){incByCat[t.cat]=(incByCat[t.cat]||0)+t.amt;});
+  var SRCS=Object.entries(incByCat).sort(function(a,b){return b[1]-a[1];}).slice(0,4).map(function(e){return{lbl:e[0],amt:e[1],col:catCol(e[0])};});
+  if(!SRCS.length) SRCS=[{lbl:'รายรับ',amt:inc,col:'#1D9E75'}];
+
+  var EXPS=expArr.map(function(e,i){return{lbl:e[0],amt:e[1],col:catCol(e[0])};});
+  var NW=11,GAP=7,LLBL=64,RLBL=74,C0=LLBL,C1=W*0.28,C2=W*0.55,C3=W-RLBL-NW,TOP=26,BOT=H-14,AVAIL=BOT-TOP,sc=(AVAIL*0.85)/inc;
+  var srcs=SRCS.map(function(s){return{lbl:s.lbl,amt:s.amt,col:s.col,h:Math.max(7,Math.round(s.amt*sc))};});
+  var sy=TOP+(AVAIL-srcs.reduce(function(a,n){return a+n.h;},0)-(srcs.length-1)*GAP)/2;
+  srcs.forEach(function(n){n.y=sy;sy+=n.h+GAP;});
+  var incH=Math.round(inc*sc),incY=TOP+(AVAIL-incH)/2;
+  var savH=Math.max(7,Math.round(sav*sc)),invH=Math.max(7,Math.round(inv*sc)),expH=Math.max(7,incH-savH-invH-GAP*2);
+  var savY=incY,invY=incY+savH+GAP,expY=incY+savH+invH+GAP*2;
+  var subs=EXPS.map(function(e){return{lbl:e.lbl,amt:e.amt,col:e.col,h:Math.max(4,Math.round(e.amt/totExp*expH))};});
+  var tSH=subs.reduce(function(a,n){return a+n.h;},0),subGap=subs.length>1?Math.max(2,Math.floor((expH-tSH)/(subs.length-1))):0;
+  var ey=expY;subs.forEach(function(n){n.y=ey;ey+=n.h+subGap;});
+  function rib(x1,y1,h1,x2,y2,h2,col,alpha){var cp=(x2-x1)*0.45;ctx.beginPath();ctx.moveTo(x1,y1);ctx.bezierCurveTo(x1+cp,y1,x2-cp,y2,x2,y2);ctx.lineTo(x2,y2+h2);ctx.bezierCurveTo(x2-cp,y2+h2,x1+cp,y1+h1,x1,y1+h1);ctx.closePath();ctx.fillStyle=rba(col,alpha);ctx.fill();}
+  function nd(x,y,h,col){ctx.fillStyle=col;ctx.beginPath();ctx.roundRect(x,y,NW,h,3);ctx.fill();}
+  function lbl(text,x,y,sz,col,align){ctx.save();ctx.font=sz+'px sans-serif';ctx.fillStyle=col;ctx.textAlign=align||'left';ctx.textBaseline='middle';ctx.fillText(text,x,y);ctx.restore();}
+  var off=incY;srcs.forEach(function(n){rib(C0+NW,n.y,n.h,C1,off,n.h,n.col,ribAlpha);off+=n.h;});
+  rib(C1+NW,savY,savH,C2,savY,savH,'#378ADD',ribAlpha2);rib(C1+NW,invY,invH,C2,invY,invH,'#7F77DD',ribAlpha2);rib(C1+NW,expY,expH,C2,expY,expH,'#D85A30',ribAlpha3);
+  rib(C2+NW,savY,savH,C3,savY,savH,'#378ADD',ribAlpha2);rib(C2+NW,invY,invH,C3,invY,invH,'#7F77DD',ribAlpha2);
+  subs.forEach(function(n){rib(C2+NW,n.y,n.h,C3,n.y,n.h,n.col,ribAlpha4);});
+  srcs.forEach(function(n){nd(C0,n.y,n.h,n.col);});
+  nd(C1,incY,incH,'#1D9E75');nd(C2,savY,savH,'#378ADD');nd(C2,invY,invH,'#7F77DD');nd(C2,expY,expH,'#D85A30');nd(C3,savY,savH,'#378ADD');nd(C3,invY,invH,'#7F77DD');
+  subs.forEach(function(n){nd(C3,n.y,n.h,n.col);});
+  srcs.forEach(function(n){lbl(n.lbl,C0-4,n.y+n.h/2-5,10,tc,'right');lbl(f(n.amt),C0-4,n.y+n.h/2+6,9,tc2,'right');});
+  lbl(f(inc),C1+NW/2,incY-1,11,'#1D9E75','center');
+  var mx=C2+NW+4;lbl('ออม',mx,savY+savH/2,9,'#185FA5');lbl('ลงทุน',mx,invY+invH/2,9,'#534AB7');lbl('รายจ่าย',mx,expY+expH/2,9,'#993C1D');
+  var rx=C3+NW+5;lbl(f(sav),rx,savY+savH/2,9,tc2);lbl(f(inv),rx,invY+invH/2,9,tc2);
+  subs.forEach(function(n){lbl(n.lbl,rx,n.y+n.h/2,9,tc);});
+  document.getElementById('sksum').innerHTML='<div class="mc"><div class="mc-l">รายรับ</div><div class="mc-v" style="color:#1D9E75">'+f(inc)+'</div></div><div class="mc"><div class="mc-l">ออม+ลงทุน</div><div class="mc-v" style="color:#378ADD">'+f(sav+inv)+'</div></div><div class="mc"><div class="mc-l">รายจ่าย</div><div class="mc-v" style="color:#D85A30">'+f(totExp)+'</div></div>';
+}
 
 // ====== TREND ======
 function renderTSeries(){document.getElementById('sr-row').innerHTML=TS.map(function(s){var on=selS[s.key];return'<button class="sr-btn'+(on?' on':'')+'" style="'+(on?'background:'+s.color+';border-color:'+s.color:'')+'" data-key="'+s.key+'"><span class="sdot" style="background:'+(on?'#fff':s.color)+'"></span>'+s.label+'</button>';}).join('');document.getElementById('sr-row').querySelectorAll('.sr-btn').forEach(function(btn){btn.addEventListener('click',function(){selS[this.getAttribute('data-key')]=!selS[this.getAttribute('data-key')];renderTSeries();drawTrend();});});}
@@ -2622,7 +2913,14 @@ function renderMonthlyTable(){
 // ====== ANALYZE: CYCLE & RANGE ======
 function togCD(e){e.stopPropagation();closeSD();cdOpen=!cdOpen;if(cdOpen)renderDrop();document.getElementById('cy-drop').classList.toggle('on',cdOpen);}
 function closeCD(){cdOpen=false;document.getElementById('cy-drop').classList.remove('on');}
-function renderDrop(){var i5=CKS.indexOf('2026-5');document.getElementById('drop-list').innerHTML=CKS.map(function(k,i){var r=gcr(k),iS=k===CUR,iC=k==='2026-5',iP=i<i5;var bt=iC?'ปัจจุบัน':iP?'ก่อนหน้า':'ถัดไป',bb=iC?'#7F77DD':iP?'var(--bg2)':'#E1F5EE',bc=iC?'#fff':iP?'var(--t3)':'#0F6E56';return'<div class="cdi'+(iS?' on':'')+'" data-k="'+k+'"><div class="cdi-ic" style="background:'+CIB[i]+'"><i class="ti ti-calendar-due" style="color:'+CIC[i]+'"></i></div><div style="flex:1;min-width:0"><div class="cdi-nm'+(iS?' cur':'')+'">'+CNF[k]+'</div><div class="cdi-rg">'+fds(r.s)+' - '+fds(r.e)+'</div></div><span class="cdi-bd" style="background:'+bb+';color:'+bc+'">'+bt+'</span></div>';}).join('');
+function renderDrop(){
+  var vis=getVisibleCycles();
+  var curK=cycKey(new Date().getFullYear(),new Date().getMonth()+1);
+  document.getElementById('drop-list').innerHTML=vis.map(function(k){
+    var i=CKS.indexOf(k),r=gcr(k),iS=k===CUR,iC=k===curK,iP=k<curK;
+    var bt=iC?'ปัจจุบัน':iP?'ก่อนหน้า':'ถัดไป',bb=iC?'#7F77DD':iP?'var(--bg2)':'#E1F5EE',bc=iC?'#fff':iP?'var(--t3)':'#0F6E56';
+    return'<div class="cdi'+(iS?' on':'')+'" data-k="'+k+'"><div class="cdi-ic" style="background:'+CIB[i]+'"><i class="ti ti-calendar-due" style="color:'+CIC[i]+'"></i></div><div style="flex:1;min-width:0"><div class="cdi-nm'+(iS?' cur':'')+'">'+CNF[k]+'</div><div class="cdi-rg">'+fds(r.s)+' - '+fds(r.e)+'</div></div><span class="cdi-bd" style="background:'+bb+';color:'+bc+'">'+bt+'</span></div>';
+  }).join('');
   document.getElementById('drop-list').querySelectorAll('.cdi').forEach(function(el){el.addEventListener('click',function(){CUR=this.getAttribute('data-k');closeCD();document.getElementById('cur-lbl').textContent=CNS[CUR];var r=gcr(CUR);SS=r.s;SE=r.e;updRL();updStat();document.querySelectorAll('#pg-ana .qb').forEach(function(b){b.classList.remove('on');});document.querySelectorAll('#pg-ana .qb.pdq').forEach(function(b){b.classList.add('on');});rAna();});});
   document.getElementById('ep-lbl').textContent=CNS[CUR];}
 function togSD(e){e.stopPropagation();closeCD();sdOpen=!sdOpen;document.getElementById('st-drop').classList.toggle('on',sdOpen);}
@@ -2633,12 +2931,74 @@ function qr(type,el){document.querySelectorAll('#pg-ana .qb').forEach(function(b
 document.getElementById('ana-cal-btn').addEventListener('click',function(e){e.stopPropagation();openCM('เลือกช่วงเวลาวิเคราะห์',SS,SE,function(s,e){SS=s;SE=e;updRL();updStat();document.querySelectorAll('#pg-ana .qb').forEach(function(b){b.classList.remove('on');});rAna();});});
 
 // ====== PAYDAY EDITOR ======
-function openEP(){epTmp=cl(CPD[CUR]);epM=new Date(epTmp.getFullYear(),epTmp.getMonth(),1);document.getElementById('ep-sub').textContent='รอบ'+CNF[CUR];document.getElementById('epw').classList.add('on');renderEP();}
+function openEP(targetCycle){
+  // populate dropdown
+  var sel=document.getElementById('ep-cycle-sel');
+  sel.innerHTML=CKS.map(function(k){
+    return '<option value="'+k+'"'+(k===(targetCycle||CUR)?' selected':'')+'>'+CNF[k]+' ('+fds(CPD[k])+')</option>';
+  }).join('');
+  // set current editing cycle
+  CUR=targetCycle||CUR;
+  epTmp=cl(CPD[CUR]);
+  epM=new Date(epTmp.getFullYear(),epTmp.getMonth(),1);
+  document.getElementById('epw').classList.add('on');
+  renderEP();
+}
+function epChangeCycle(k){
+  CUR=k;
+  epTmp=cl(CPD[CUR]);
+  epM=new Date(epTmp.getFullYear(),epTmp.getMonth(),1);
+  renderEP();
+}
 function closeEP(){document.getElementById('epw').classList.remove('on');}
 function epCM(d){epM=new Date(epM.getFullYear(),epM.getMonth()+d,1);renderEP();}
-function renderEP(){buildCal(document.getElementById('ep-cal'),epM,epTmp,null,function(y,m,d){epTmp=new Date(y,m,d);renderEP();},function(dir){epM=new Date(epM.getFullYear(),epM.getMonth()+dir,1);renderEP();});var el=document.getElementById('ep-info');if(!epTmp){el.textContent='เลือกวันที่เงินเข้า';return;}var i=CKS.indexOf(CUR),nk=CKS[i+1],nd=nk?new Date(CPD[nk].getTime()-86400000):cl(T);el.innerHTML='วันเงินเข้า <strong>'+fd(epTmp)+'</strong><br>ช่วงรอบ: '+fd(epTmp)+' - '+fd(nd);}
+function renderEP(){
+  if(!epM) return;
+  document.getElementById('ep-ml').textContent = MOT[epM.getMonth()]+' '+epM.getFullYear();
+  var y=epM.getFullYear(), m=epM.getMonth();
+  var fi=new Date(y,m,1).getDay(), days=new Date(y,m+1,0).getDate();
+  var html='';
+  DOW.forEach(function(d){html+='<div class="cdw">'+d+'</div>';});
+  for(var i=0;i<fi;i++) html+='<div class="cd emp"></div>';
+  for(var d=1;d<=days;d++){
+    var dt=new Date(y,m,d);
+    var sel=epTmp&&seq(dt,epTmp);
+    var today=seq(dt,T)&&!sel;
+    html+='<div class="cd'+(sel?' sel':'')+(today?' tdy':'')+'" data-y="'+y+'" data-m="'+m+'" data-d="'+d+'">'+d+'</div>';
+  }
+  var cal=document.getElementById('ep-cal');
+  cal.className='cgr';
+  cal.innerHTML=html;
+  cal.querySelectorAll('.cd:not(.emp)').forEach(function(c){
+    c.addEventListener('click',function(e){
+      e.stopPropagation();
+      epTmp=new Date(parseInt(this.dataset.y),parseInt(this.dataset.m),parseInt(this.dataset.d));
+      renderEP();
+    });
+  });
+  var el=document.getElementById('ep-info');
+  if(!epTmp){el.textContent='เลือกวันที่เงินเข้า';return;}
+  var i=CKS.indexOf(CUR),nk=CKS[i+1];
+  var nd=nk?new Date(CPD[nk].getTime()-86400000):cl(T);
+  el.innerHTML='วันเงินเข้า <strong>'+fd(epTmp)+'</strong><br>ช่วงรอบ: '+fd(epTmp)+' — '+fd(nd);
+}
 function resetCy(){epTmp=cl(DEFS[CUR]);CED[CUR]=false;renderEP();}
-function saveCy(){if(!epTmp)return;CPD[CUR]=cl(epTmp);CED[CUR]=true;closeEP();var r=gcr(CUR);SS=r.s;SE=r.e;updRL();updStat();lsSave();showToast('บันทึกวันเงินเดือนแล้ว');rAna();}
+function saveCy(){
+  if(!epTmp)return;
+  CPD[CUR]=cl(epTmp);CED[CUR]=true;
+  // อัพเดท dropdown ให้แสดงวันใหม่
+  var sel=document.getElementById('ep-cycle-sel');
+  if(sel){
+    sel.innerHTML=CKS.map(function(k){
+      return '<option value="'+k+'"'+(k===CUR?' selected':'')+'>'+CNF[k]+' ('+fds(CPD[k])+')</option>';
+    }).join('');
+  }
+  closeEP();
+  var r=gcr(CUR);SS=r.s;SE=r.e;
+  updRL();updStat();lsSave();
+  showToast('✅ บันทึกวันเงินเดือนรอบ '+CNF[CUR]+' แล้ว');
+  rAna();
+}
 
 // ====== TAB SWITCH ======
 function swTab(id,el){document.querySelectorAll('#pg-ana .tc').forEach(function(t){t.classList.remove('on');});document.querySelectorAll('#pg-ana .tbtn').forEach(function(b){b.classList.remove('on');});document.getElementById('tc-'+id).classList.add('on');el.classList.add('on');atab=id;setTimeout(function(){rAna();},60);}
