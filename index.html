@@ -1557,40 +1557,44 @@ async function signOut() {
 }
 
 function updateNavUser(user) {
+  // ดึง user ล่าสุดจาก Firebase currentUser เสมอ (มี displayName/metadata ครบ)
+  var fbUser = (window._FB && window._FB.auth && window._FB.auth.currentUser) || user;
   var navU = document.getElementById('nav-user');
   var soBtn = document.getElementById('sign-out-btn');
-  if (user) {
+  if (fbUser) {
     navU.style.display = 'flex';
     soBtn.style.display = 'block';
-    var nm = user.displayName || user.email || 'ผู้ใช้';
-    var em = user.email || '';
+    var nm = fbUser.displayName || fbUser.email || 'ผู้ใช้';
+    var em = fbUser.email || '';
     var av = (nm[0]||'U').toUpperCase();
     document.getElementById('nav-email').textContent = nm;
     document.getElementById('nav-av').textContent = av;
     // Settings page
-    var sAv = document.getElementById('set-av'); if(sAv) sAv.textContent = av;
-    var sNm = document.getElementById('set-uname'); if(sNm) sNm.textContent = nm;
-    var sEm = document.getElementById('set-uemail'); if(sEm) sEm.textContent = em;
-    // เริ่มใช้งาน — จาก Firebase createdAt
-    var joined = document.getElementById('set-joined');
-    if(joined && user.metadata && user.metadata.creationTime) {
-      var d = new Date(user.metadata.creationTime);
-      joined.textContent = d.toLocaleDateString('th-TH', {day:'numeric', month:'long', year:'numeric'});
+    var sAv=document.getElementById('set-av'); if(sAv) sAv.textContent=av;
+    var sNm=document.getElementById('set-uname'); if(sNm) sNm.textContent=nm;
+    var sEm=document.getElementById('set-uemail'); if(sEm) sEm.textContent=em;
+    // เริ่มใช้งาน
+    var joined=document.getElementById('set-joined');
+    if(joined){
+      if(fbUser.metadata && fbUser.metadata.creationTime){
+        joined.textContent=new Date(fbUser.metadata.creationTime).toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
+      } else { joined.textContent='—'; }
     }
-    // อัพเดทล่าสุด — จาก lastSignInTime
-    var lastSync = document.getElementById('set-lastsync');
-    if(lastSync && user.metadata && user.metadata.lastSignInTime) {
-      var d2 = new Date(user.metadata.lastSignInTime);
-      lastSync.textContent = d2.toLocaleDateString('th-TH', {day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit'});
+    // อัพเดทล่าสุด
+    var lastSync=document.getElementById('set-lastsync');
+    if(lastSync){
+      if(fbUser.metadata && fbUser.metadata.lastSignInTime){
+        lastSync.textContent=new Date(fbUser.metadata.lastSignInTime).toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      } else { lastSync.textContent='—'; }
     }
     // Dashboard greeting
-    var grEl = document.getElementById('db-greeting');
-    var hr = new Date().getHours();
-    var greet = hr < 12 ? 'อรุณสวัสดิ์' : hr < 17 ? 'สวัสดีตอนบ่าย' : 'สวัสดีตอนเย็น';
-    if(grEl) grEl.textContent = greet + ', ' + nm + ' 👋';
+    var grEl=document.getElementById('db-greeting');
+    var hr=new Date().getHours();
+    var greet=hr<12?'อรุณสวัสดิ์':hr<17?'สวัสดีตอนบ่าย':'สวัสดีตอนเย็น';
+    if(grEl) grEl.textContent=greet+', '+nm+' 👋';
   } else {
-    navU.style.display = 'none';
-    soBtn.style.display = 'none';
+    navU.style.display='none';
+    soBtn.style.display='none';
   }
 }
 
@@ -1786,6 +1790,10 @@ async function bootApp() {
         SyncManager.setSyncDot('err');
       }
       hideLoader();
+      // re-update user info หลัง load เสร็จ (ได้ displayName ครบแล้ว)
+      if(window._FB && window._FB.auth && window._FB.auth.currentUser){
+        updateNavUser(window._FB.auth.currentUser);
+      }
       applyT(); ensureFutureBuffer(); initBSYrSel(); renderDbDrop();
       dbQR('month', document.getElementById('db-qm'));
       populateTxFilter(); renderSalLbl();
