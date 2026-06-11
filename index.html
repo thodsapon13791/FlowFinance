@@ -49,11 +49,15 @@ var _ICONS = {
 };
 // Replace all <i class="ti ti-NAME"> with inline SVG
 document.addEventListener('DOMContentLoaded', function() {
-  renderIcons(document.body);
+  // แรกโหลด render แค่ nav และ auth (ไม่ใช่ทั้ง body)
+  renderIcons(document.querySelector('.topnav'));
+  renderIcons(document.querySelector('.botnav'));
+  renderIcons(document.querySelector('.auth-wrap'));
 });
 // Also expose for dynamic content
 window.renderIcons = function(root) {
-  (root||document.body).querySelectorAll('i.ti').forEach(function(el) {
+  if (!root) return;
+  root.querySelectorAll('i.ti').forEach(function(el) {
     var cls = el.className;
     var match = cls.match(/ti-([a-z0-9\-]+)/);
     if (!match) return;
@@ -69,7 +73,7 @@ window.renderIcons = function(root) {
   });
 };
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" defer></script>
 <!-- Firebase SDK -->
 <script type="module">
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
@@ -94,8 +98,13 @@ const _fbDb   = getFirestore(_fbApp);
 
 // ── helpers ──
 const _uid = () => _fbAuth.currentUser?.uid;
-const _col = (c) => collection(_fbDb,'users',_uid(),c);
-const _doc = (c,id) => doc(_fbDb,'users',_uid(),c,String(id));
+const requireUid = () => {
+  const uid = _fbAuth.currentUser?.uid;
+  if (!uid) throw new Error('User not authenticated');
+  return uid;
+};
+const _col = (c) => collection(_fbDb,'users',requireUid(),c);
+const _doc = (c,id) => doc(_fbDb,'users',requireUid(),c,String(id));
 
 // ── expose to global scope (ใช้ใน AuthManager / DatabaseService) ──
 window._FB = {
@@ -110,10 +119,15 @@ window._FB = {
   col:_col, docRef:_doc
 };
 
-// ── เรียก bootApp หลัง Firebase พร้อมแน่นอน ──
-window.addEventListener('DOMContentLoaded', function() {
+// ── เรียก bootApp หลัง Firebase พร้อม และ DOM พร้อม ──
+function _startApp() {
   if (typeof bootApp === 'function') bootApp();
-});
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', _startApp);
+} else {
+  _startApp();
+}
 </script>
 <style>
 /* ── Auth screen ── */
@@ -1042,6 +1056,8 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg0);color:
   <div class="card" style="margin-top:10px">
     <div style="font-size:12px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:.75rem">ข้อมูล</div>
     <div class="set-row"><div><div class="set-label">Export ข้อมูลทั้งหมด</div><div class="set-sub">CSV ทุกรายการ</div></div><button class="btn-sm-g" onclick="exportAllExcel()"><i class="ti ti-file-spreadsheet"></i> Export</button></div>
+    <div class="set-row"><div><div class="set-label">Backup JSON</div><div class="set-sub">สำรองข้อมูลทั้งหมด</div></div><button class="btn-sm-g" onclick="exportJSON()"><i class="ti ti-download"></i> Backup</button></div>
+    <div class="set-row"><div><div class="set-label">Restore JSON</div><div class="set-sub">นำเข้าจากไฟล์ backup</div></div><button class="btn-sm" onclick="importJSON()"><i class="ti ti-upload"></i> Restore</button></div>
     <div class="set-row"><div><div class="set-label">Export รายงาน HTML</div><div class="set-sub">ไฟล์สำหรับบันทึก</div></div><button class="btn-sm-r" onclick="exportHTML()"><i class="ti ti-download"></i> Download</button></div>
     <div class="set-row" style="border-top:1px solid var(--bdr);margin-top:8px;padding-top:12px">
       <div>
@@ -1108,7 +1124,10 @@ var AuthManager = {
   },
 
   magicLink: async function(email) {
-    var settings = {url: window.location.href, handleCodeInApp: true};
+    var settings = {
+      url: window.location.href,
+      handleCodeInApp: true
+    };
     await window._FB.sendSignInLinkToEmail(window._FB.auth, email, settings);
     window.localStorage.setItem('emailForSignIn', email);
   },
@@ -1121,7 +1140,13 @@ var AuthManager = {
     if (isMobile) {
       await window._FB.signInWithRedirect(window._FB.auth, provider);
     } else {
-      await window._FB.signInWithPopup(window._FB.auth, provider);
+      try {
+        await window._FB.signInWithPopup(window._FB.auth, provider);
+      } catch(e) {
+        if (e.code === 'auth/popup-blocked' || e.code === 'auth/cancelled-popup-request') {
+          await window._FB.signInWithRedirect(window._FB.auth, provider);
+        } else { throw e; }
+      }
     }
   },
 
@@ -1316,6 +1341,53 @@ var SyncManager = {
     }, 1500);
   }
 };
+
+// ── Offline Queue ────────────────────────────────────────────
+var OfflineQueue = {
+  _queue: [],
+  _key: 'ff_offline_queue',
+
+  load: function(){
+    try{ this._queue=JSON.parse(localStorage.getItem(this._key)||'[]'); }
+    catch(e){ this._queue=[]; }
+  },
+  save: function(){
+    try{ localStorage.setItem(this._key,JSON.stringify(this._queue)); }
+    catch(e){}
+  },
+  add: function(action,data){
+    this._queue.push({action:action,data:data,ts:Date.now()});
+    this.save();
+    SyncManager.setSyncDot('err');
+  },
+  flush: async function(){
+    if(!AuthManager.getUser()||!navigator.onLine||!this._queue.length)return;
+    SyncManager.setSyncDot('ing');
+    var q=this._queue.slice();
+    this._queue=[];this.save();
+    for(var i=0;i<q.length;i++){
+      var item=q[i];
+      try{
+        if(item.action==='upsertTx')await DatabaseService.upsertTransaction(item.data);
+        else if(item.action==='deleteTx')await DatabaseService.deleteTransaction(item.data);
+        else if(item.action==='upsertGoal')await DatabaseService.upsertGoal(item.data);
+      }catch(e){
+        this._queue.unshift(item);this.save();
+        SyncManager.setSyncDot('err');return;
+      }
+    }
+    SyncManager.setSyncDot('ok');
+    showToast('✅ Sync ข้อมูลสำเร็จ');
+  }
+};
+window.addEventListener('online',function(){
+  showToast('🌐 เชื่อมต่ออินเทอร์เน็ตแล้ว กำลัง sync...');
+  OfflineQueue.flush();
+});
+window.addEventListener('offline',function(){
+  showToast('📵 ออฟไลน์ — ข้อมูลบันทึกไว้ชั่วคราว');
+});
+OfflineQueue.load();
 // ── Settings payload builder ──
 function buildSettingsPayload() {
   return {
@@ -1486,19 +1558,18 @@ async function doAuth() {
   try {
     if (_authMode==='in') {
       await AuthManager.signIn(email, pwd);
-      // Auth state change listener จะ handle UI ต่อ
     } else {
-      var res = await AuthManager.signUp(email, pwd);
-      if (!res.session) {
-        // ถ้า Confirm email ปิดอยู่ session จะมีมาทันที
-        // ถ้ายังเปิดอยู่ให้แจ้ง user
-        okEl.textContent = '✅ สมัครสมาชิกสำเร็จ กำลังเข้าสู่ระบบ...';
-        okEl.classList.add('on');
-        // ลอง sign in ทันทีหลังสมัคร
+      await AuthManager.signUp(email, pwd);
+      // ส่ง email verification
+      var fbUser = window._FB && window._FB.auth && window._FB.auth.currentUser;
+      if (fbUser && !fbUser.emailVerified) {
         try {
-          await AuthManager.signIn(email, pwd);
-        } catch(e2) {
-          okEl.textContent = '✅ สมัครสำเร็จ กรุณาตรวจอีเมลยืนยัน แล้วเข้าสู่ระบบ';
+          await window._FB.sendEmailVerification(fbUser);
+          okEl.textContent = '✅ สมัครสำเร็จ! กรุณายืนยันอีเมลที่ ' + email + ' ก่อนเข้าใช้งาน';
+          okEl.classList.add('on');
+        } catch(evErr) {
+          okEl.textContent = '✅ สมัครสำเร็จ กำลังเข้าสู่ระบบ...';
+          okEl.classList.add('on');
         }
       }
     }
@@ -1507,21 +1578,22 @@ async function doAuth() {
   } finally {
     setAuthLoading(false, 'a-spin');
     document.getElementById('a-btn-txt').textContent = _authMode==='in' ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก';
-    // cooldown 2s ป้องกัน double-submit
     setTimeout(function(){ _authCooldown = false; }, 2000);
   }
 }
 
 async function doGoogleSignIn() {
   var spin = document.getElementById('gg-spin');
+  var btn = document.querySelector('.auth-btn-google');
   if (spin) spin.style.display = 'block';
+  if (btn) btn.disabled = true;
   document.getElementById('a-err').textContent = '';
   try {
     await AuthManager.signInWithGoogle();
-    // onAuthStateChanged จะ handle UI ต่อเอง
   } catch(e) {
     document.getElementById('a-err').textContent = mapAuthError(e.message);
     if (spin) spin.style.display = 'none';
+    if (btn) btn.disabled = false;
   }
 }
 
@@ -1559,17 +1631,17 @@ async function doForgotPwd() {
   }
 }
 
-async function signOut() {
+async function logoutUser() {
   await AuthManager.signOut();
   updateNavUser(null);
-  // ล้าง state ทั้งหมดในแรม ป้องกันข้อมูลเก่าค้างสำหรับผู้ใช้คนต่อไป
   TXS=[]; GOALS=[]; BSD={}; BUDS={};
-  userName=''; salary={monthly:45000,extra:0};
-  // ลบ cache ใน localStorage
+  userName=''; salary={monthly:0,extra:0};
   try { localStorage.removeItem(LS_KEY); } catch(e){}
   showAuth();
   showToast('ออกจากระบบแล้ว');
 }
+// alias สำหรับ backward compat
+var signOut = logoutUser;
 
 function updateNavUser(user) {
   var fbUser = (window._FB && window._FB.auth && window._FB.auth.currentUser) || user;
@@ -1639,7 +1711,14 @@ async function saveT() {
   SyncManager.setSyncDot('ing');
   try {
     if (AuthManager.getUser()) {
-      tx = await DatabaseService.upsertTransaction(tx);
+      if (navigator.onLine) {
+        tx = await DatabaseService.upsertTransaction(tx);
+      } else {
+        tx.id = tx.id || Date.now();
+        OfflineQueue.add('upsertTx', tx);
+      }
+    } else {
+      tx.id = tx.id || Date.now();
     }
     if (eTxId) {
       var idx = TXS.findIndex(function(x){ return String(x.id) === String(eTxId); });
@@ -1755,14 +1834,33 @@ async function saveBSI() {
 // bootApp — entry point
 // ════════════════════════════════════════════════════
 async function bootApp() {
-  // Firebase พร้อมแล้วแน่นอน (เรียกจาก module script)
   AuthManager.init();
 
-  // ตรวจสอบ redirect result (mobile Google Sign-In)
+  // ── 1. Handle Magic Link (Email Link Sign-In) ──────────────
+  if (window._FB && window._FB.isSignInWithEmailLink(window._FB.auth, window.location.href)) {
+    var emailForSignIn = window.localStorage.getItem('emailForSignIn');
+    if (!emailForSignIn) {
+      emailForSignIn = window.prompt('กรุณากรอกอีเมลของคุณเพื่อยืนยัน');
+    }
+    if (emailForSignIn) {
+      try {
+        showLoader('กำลังเข้าสู่ระบบด้วย Magic Link...');
+        await window._FB.signInWithEmailLink(window._FB.auth, emailForSignIn, window.location.href);
+        window.localStorage.removeItem('emailForSignIn');
+        // ล้าง URL ไม่ให้มี token ค้างอยู่
+        window.history.replaceState(null, '', window.location.pathname);
+        hideLoader();
+      } catch(e) {
+        hideLoader();
+        console.error('Magic Link error:', e);
+      }
+    }
+  }
+
+  // ── 2. Handle Google Redirect Result ──────────────────────
   if (window._FB) {
     try {
       await window._FB.getRedirectResult(window._FB.auth);
-      // ถ้า redirect สำเร็จ onAuthStateChanged จะ fire เองอัตโนมัติ
     } catch(e) {
       if (e.code && e.code !== 'auth/no-auth-event' && e.code !== 'auth/null-user') {
         console.error('Redirect error:', e.code);
@@ -1770,14 +1868,16 @@ async function bootApp() {
     }
   }
 
-  // เตรียม UI พื้นฐานก่อนเสมอ
+  // เตรียม UI พื้นฐาน — แสดง loader ก่อนรู้ auth state
   lsLoad(); applyT(); ensureFutureBuffer();
   initBSYrSel(); renderDbDrop();
   populateTxFilter(); renderSalLbl();
   if (userName) { var sn=document.getElementById('set-name'); if(sn) sn.value=userName; }
+  showLoader('กำลังเริ่มต้น...');
 
   if (!AuthManager.isConfigured()) {
     // Firebase ไม่ได้ config — แสดง app เลยแบบ offline
+    hideLoader();
     dbQR('month', document.getElementById('db-qm'));
     SyncManager.setSyncDot('err');
     goP('db', document.querySelector('.ni'));
@@ -1787,6 +1887,35 @@ async function bootApp() {
   AuthManager.onAuthChange(async function(event, session) {
     var user = session ? session.user : null;
     if (user) {
+      // ── ตรวจ Email Verification (เฉพาะ email/password ไม่ใช่ Google) ──
+      var isEmailProvider = user.providerData && user.providerData.some(function(p){
+        return p.providerId === 'password';
+      });
+      if (isEmailProvider && !user.emailVerified) {
+        // ยังไม่ verify — แจ้งและ logout
+        AuthManager.setUser(null);
+        showAuth();
+        var errEl = document.getElementById('a-err');
+        if (errEl) errEl.textContent = '⚠️ กรุณายืนยันอีเมลก่อนเข้าใช้งาน (ตรวจกล่อง Inbox หรือ Spam)';
+        var resendBtn = document.getElementById('a-resend-verify');
+        if (!resendBtn) {
+          var btn = document.createElement('button');
+          btn.id = 'a-resend-verify';
+          btn.className = 'auth-btn';
+          btn.style.cssText = 'background:#EF9F27;margin-top:8px';
+          btn.textContent = '📧 ส่งอีเมลยืนยันใหม่';
+          btn.onclick = async function() {
+            try {
+              await window._FB.sendEmailVerification(user);
+              showToast('✅ ส่งอีเมลยืนยันแล้ว กรุณาตรวจกล่องจดหมาย');
+            } catch(e) { showToast('⚠️ ส่งไม่สำเร็จ: ' + e.message); }
+          };
+          if (errEl) errEl.parentNode.insertBefore(btn, errEl.nextSibling);
+        }
+        await AuthManager.signOut();
+        return;
+      }
+
       AuthManager.setUser(user);
       updateNavUser(user);
       hideAuth();
@@ -1818,6 +1947,7 @@ async function bootApp() {
     } else {
       AuthManager.setUser(null);
       updateNavUser(null);
+      hideLoader();
       showAuth();
     }
   });
@@ -2047,6 +2177,30 @@ function catNec(name){ syncCAT(); return !!(CAT[name]&&CAT[name].n); }
 
 // ====== TRANSACTIONS ======
 var TXS=[];
+
+// ── AppState: Central state management ──────────────────────
+var AppState = {
+  get txs()    { return TXS; },
+  set txs(v)   { TXS = v; },
+  get goals()  { return GOALS; },
+  set goals(v) { GOALS = v; },
+  get buds()   { return BUDS; },
+  set buds(v)  { BUDS = v; },
+  get bsd()    { return BSD; },
+  set bsd(v)   { BSD = v; },
+  get cats()   { return CATS; },
+  set cats(v)  { CATS = v; },
+
+  // reset ทุกอย่าง
+  reset: function(){
+    TXS=[]; GOALS=[]; BUDS={}; BSD={};
+  },
+
+  // ตรวจว่ามีข้อมูลไหม
+  isEmpty: function(){
+    return TXS.length===0 && GOALS.length===0;
+  }
+};
 
 // ====== DYNAMIC MD (computed from TXS) ======
 function buildMD(){
@@ -2405,7 +2559,11 @@ function quickDelTx(e, id) {
     SyncManager.setSyncDot('ing');
     DatabaseService.deleteTransaction(id)
       .then(function(){ SyncManager.setSyncDot('ok'); })
-      .catch(function(e){ console.error(e); SyncManager.setSyncDot('err'); });
+      .catch(function(e){
+        SyncManager.setSyncDot('err');
+        showToast('⚠️ ลบไม่สำเร็จ กรุณาลองใหม่');
+        console.error('quickDelTx:', e);
+      });
   }
   refreshAll();
   showToast('🗑️ ลบรายการแล้ว');
@@ -2598,6 +2756,52 @@ function rdDB(){
 }
 
 // ====== EXPORTS ======
+// ── Export JSON (Backup) ─────────────────────────────────────
+function exportJSON(){
+  var payload={
+    version:33, exportedAt:new Date().toISOString(),
+    TXS:TXS, GOALS:GOALS, BSD:BSD, BUDS:BUDS,
+    CATS:CATS, CAT:CAT, salary:salary, userName:userName
+  };
+  var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='FlowFinance_backup_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  showToast('📦 Export JSON สำเร็จ');
+}
+
+// ── Import JSON (Restore) ────────────────────────────────────
+function importJSON(){
+  var inp=document.createElement('input');
+  inp.type='file'; inp.accept='.json';
+  inp.onchange=function(e){
+    var file=e.target.files[0]; if(!file)return;
+    var reader=new FileReader();
+    reader.onload=function(ev){
+      try{
+        var d=JSON.parse(ev.target.result);
+        if(!d.TXS||!d.CATS){showToast('❌ ไฟล์ไม่ถูกต้อง');return;}
+        if(!confirm('นำเข้าข้อมูลจากไฟล์?\nข้อมูลปัจจุบันจะถูกแทนที่'))return;
+        if(d.TXS)TXS=d.TXS;
+        if(d.GOALS)GOALS=d.GOALS;
+        if(d.BSD)BSD=d.BSD;
+        if(d.BUDS)BUDS=d.BUDS;
+        if(d.CATS)CATS=d.CATS;
+        if(d.CAT)CAT=d.CAT;
+        if(d.salary)salary=d.salary;
+        if(d.userName)userName=d.userName;
+        lsSave(); refreshAll();
+        showToast('✅ Import สำเร็จ '+TXS.length+' รายการ');
+      }catch(err){
+        showToast('❌ อ่านไฟล์ไม่ได้: '+err.message);
+      }
+    };
+    reader.readAsText(file);
+  };
+  inp.click();
+}
+
 function exportAllExcel(){
   var rows=[['FlowFinance - รายการทั้งหมด'],['วันที่','ประเภท','หมวด','รายละเอียด','จำนวน','ประจำ']];
   TXS.slice().sort(function(a,b){return b.dt.localeCompare(a.dt);}).forEach(function(t){rows.push([t.dt,t.tp,t.cat,t.note,t.amt,t.rec?'ใช่':'ไม่']);});
