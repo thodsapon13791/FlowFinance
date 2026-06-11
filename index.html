@@ -1136,8 +1136,11 @@ var AuthManager = {
     var provider = new window._FB.GoogleAuthProvider();
     provider.addScope('email');
     provider.addScope('profile');
+    // Safari (iOS/Mac) และ PWA standalone ต้องใช้ redirect เสมอ
+    var isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
     var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (isMobile) {
+    var isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+    if (isMobile || isSafari || isStandalone) {
       await window._FB.signInWithRedirect(window._FB.auth, provider);
     } else {
       try {
@@ -1941,14 +1944,24 @@ async function bootApp() {
     }
   }
 
-  // ── 2. Handle Google Redirect Result ──────────────────────
+  // ── 2. Handle Google Redirect Result (สำคัญมากสำหรับ Safari/iOS) ──
   if (window._FB) {
     try {
-      await window._FB.getRedirectResult(window._FB.auth);
+      showLoader('กำลังตรวจสอบการเข้าสู่ระบบ...');
+      var redirectResult = await window._FB.getRedirectResult(window._FB.auth);
+      if (redirectResult && redirectResult.user) {
+        // redirect สำเร็จ — onAuthStateChanged จะ fire เองต่อไป
+        console.log('Redirect sign-in success');
+      }
     } catch(e) {
       if (e.code && e.code !== 'auth/no-auth-event' && e.code !== 'auth/null-user') {
-        console.error('Redirect error:', e.code);
+        console.error('Redirect error:', e.code, e.message);
+        // แสดง error บนหน้า login
+        var errEl = document.getElementById('a-err');
+        if (errEl) errEl.textContent = mapAuthError(e.message);
       }
+    } finally {
+      hideLoader();
     }
   }
 
