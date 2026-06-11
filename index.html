@@ -73,7 +73,7 @@ window.renderIcons = function(root) {
 <!-- Firebase SDK -->
 <script type="module">
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,sendSignInLinkToEmail,isSignInWithEmailLink,signInWithEmailLink}from'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import{getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,getRedirectResult,signOut,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,sendSignInLinkToEmail,isSignInWithEmailLink,signInWithEmailLink}from'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import{getFirestore,collection,doc,addDoc,setDoc,getDoc,getDocs,updateDoc,deleteDoc,query,where,orderBy,serverTimestamp,writeBatch}from'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 // ── Firebase Config ──────────────────────────────────────────
@@ -100,7 +100,7 @@ const _doc = (c,id) => doc(_fbDb,'users',_uid(),c,String(id));
 // ── expose to global scope (ใช้ใน AuthManager / DatabaseService) ──
 window._FB = {
   auth:_fbAuth, db:_fbDb,
-  GoogleAuthProvider, signInWithPopup, signOut,
+  GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut,
   onAuthStateChanged, signInWithEmailAndPassword,
   createUserWithEmailAndPassword, sendPasswordResetEmail,
   sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink,
@@ -1112,7 +1112,17 @@ var AuthManager = {
     var provider = new window._FB.GoogleAuthProvider();
     provider.addScope('email');
     provider.addScope('profile');
-    await window._FB.signInWithPopup(window._FB.auth, provider);
+    try {
+      // ลอง popup ก่อน
+      await window._FB.signInWithPopup(window._FB.auth, provider);
+    } catch(e) {
+      if (e.code === 'auth/popup-blocked' || e.code === 'auth/cancelled-popup-request') {
+        // popup ถูกบล็อก — ใช้ redirect แทน
+        await window._FB.signInWithRedirect(window._FB.auth, provider);
+      } else {
+        throw e;
+      }
+    }
   },
 
   getSession: async function() {
@@ -1758,6 +1768,18 @@ async function bootApp() {
   await waitFB(50); // รอ 5 วิ
 
   AuthManager.init();
+
+  // ตรวจสอบ redirect result (กรณี Google Sign-In แบบ redirect)
+  if (window._FB) {
+    try {
+      var redirectResult = await window._FB.getRedirectResult(window._FB.auth);
+      if (redirectResult && redirectResult.user) {
+        // login สำเร็จจาก redirect — onAuthStateChanged จะ handle ต่อเอง
+      }
+    } catch(e) {
+      if (e.code !== 'auth/no-auth-event') console.error('Redirect result error:', e);
+    }
+  }
 
   // เตรียม UI พื้นฐานก่อนเสมอ
   lsLoad(); applyT(); ensureFutureBuffer();
