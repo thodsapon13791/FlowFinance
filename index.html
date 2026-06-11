@@ -95,6 +95,7 @@ const FB_CFG = {
 const _fbApp  = initializeApp(FB_CFG);
 const _fbAuth = getAuth(_fbApp);
 const _fbDb   = getFirestore(_fbApp);
+const APP_VERSION = '36.1.0';
 
 // ── helpers ──
 const _uid = () => _fbAuth.currentUser?.uid;
@@ -106,7 +107,7 @@ const requireUid = () => {
 const _col = (c) => collection(_fbDb,'users',requireUid(),c);
 const _doc = (c,id) => doc(_fbDb,'users',requireUid(),c,String(id));
 
-// ── expose to global scope (ใช้ใน AuthManager / DatabaseService) ──
+// ── expose to global scope ──
 window._FB = {
   auth:_fbAuth, db:_fbDb,
   GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut,
@@ -670,7 +671,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg0);color:
     <div class="fg"><label>ชื่อ</label><input type="text" id="g-name"></div>
     <div class="fg"><label>เป้าหมาย (฿)</label><input type="number" id="g-tg" inputmode="decimal"></div>
     <div class="fg"><label>ยอดตั้งต้น (฿)</label><input type="number" id="g-base" inputmode="decimal"></div>
-    <div class="fg"><label>เชื่อมหมวด</label><select id="g-link"><option value="">ไม่เชื่อม</option><option value="savings">ออม</option><option value="invest">ลงทุน</option></select></div>
+    <div class="fg"><label>เชื่อมหมวด <span style="font-size:10px;color:var(--t3)">(ยอดสะสมจากรายการในหมวดนี้)</span></label><select id="g-link"><option value="">ไม่เชื่อม</option></select></div>
     <div class="fg"><label>เก็บต่อเดือน (฿)</label><input type="number" id="g-mo" inputmode="decimal"></div>
     <div class="fg"><label>สี</label>
       <div class="color-row" id="g-colors">
@@ -1072,7 +1073,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg0);color:
   <!-- เกี่ยวกับ -->
   <div class="card" style="margin-top:10px;margin-bottom:20px">
     <div style="font-size:12px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:.75rem">เกี่ยวกับ</div>
-    <div class="set-row"><div><div class="set-label">FlowFinance v25</div><div style="font-size:11px;color:var(--t3);margin-top:2px">Personal Finance App — THB · Firebase Cloud Sync</div></div></div>
+    <div class="set-row"><div><div class="set-label">FlowFinance <span id="app-version">v36.1.0</span></div><div style="font-size:11px;color:var(--t3);margin-top:2px">Personal Finance App — THB · Firebase Cloud Sync</div></div></div>
   </div>
 </div>
 </div></div>
@@ -1302,6 +1303,66 @@ var DatabaseService = {
     await window._FB.setDoc(window._FB.docRef('meta','settings'), {payload:payload, updatedAt:new Date().toISOString()});
   },
 
+  deleteCollection: async function(name) {
+    var snap = await window._FB.getDocs(window._FB.col(name));
+    if (!snap.docs.length) return;
+    var batch = window._FB.writeBatch(window._FB.db);
+    var count = 0;
+    for (var i=0;i<snap.docs.length;i++) {
+      batch.delete(snap.docs[i].ref);
+      count++;
+      if (count >= 450) {
+        await batch.commit();
+        batch = window._FB.writeBatch(window._FB.db);
+        count = 0;
+      }
+    }
+    if (count) await batch.commit();
+  },
+
+  clearUserData: async function() {
+    await Promise.all([
+      this.deleteCollection('transactions'),
+      this.deleteCollection('goals'),
+      this.deleteCollection('balance_sheet')
+    ]);
+  },
+
+  replaceCloudFromLocal: async function() {
+    await this.clearUserData();
+    var tasks = [];
+    TXS.forEach(function(t){ tasks.push(DatabaseService.upsertTransaction(t)); });
+    GOALS.forEach(function(g){ tasks.push(DatabaseService.upsertGoal(g)); });
+    Object.keys(BSD||{}).forEach(function(yr){
+      var bucket = BSD[yr] || {assets:[], debts:[]};
+      (bucket.assets||[]).forEach(function(x){ tasks.push(DatabaseService.upsertBSItem(x, 'asset', parseInt(yr))); });
+      (bucket.debts||[]).forEach(function(x){ tasks.push(DatabaseService.upsertBSItem(x, 'debt', parseInt(yr))); });
+    });
+    await Promise.all(tasks);
+    await this.saveSettings(buildSettingsPayload());
+  },
+
+  replaceCloudFromSnapshot: async function(snap) {
+    snap = snap || {};
+    await this.clearUserData();
+    var tasks = [];
+    (snap.TXS||[]).forEach(function(t){ tasks.push(DatabaseService.upsertTransaction(t)); });
+    (snap.GOALS||[]).forEach(function(g){ tasks.push(DatabaseService.upsertGoal(g)); });
+    Object.keys(snap.BSD||{}).forEach(function(yr){
+      var bucket = snap.BSD[yr] || {assets:[], debts:[]};
+      (bucket.assets||[]).forEach(function(x){ tasks.push(DatabaseService.upsertBSItem(x, 'asset', parseInt(yr))); });
+      (bucket.debts||[]).forEach(function(x){ tasks.push(DatabaseService.upsertBSItem(x, 'debt', parseInt(yr))); });
+    });
+    await Promise.all(tasks);
+    await this.saveSettings({
+      BUDS:snap.BUDS||{}, CATS:snap.CATS||CATS, CAT:snap.CAT||CAT,
+      CPD_raw:snap.CPD_raw||{}, CED:snap.CED||{}, CKS:snap.CKS||CKS,
+      CNF:snap.CNF||CNF, CNS:snap.CNS||CNS,
+      userName:snap.userName||'', salary:snap.salary||{monthly:0,extra:0},
+      isDark:snap.isDark!==undefined?snap.isDark:isDark
+    });
+  },
+
   // ── Full load ──
   loadAll: async function() {
     var results = await Promise.all([
@@ -1372,6 +1433,11 @@ var OfflineQueue = {
         if(item.action==='upsertTx')await DatabaseService.upsertTransaction(item.data);
         else if(item.action==='deleteTx')await DatabaseService.deleteTransaction(item.data);
         else if(item.action==='upsertGoal')await DatabaseService.upsertGoal(item.data);
+        else if(item.action==='deleteGoal')await DatabaseService.deleteGoal(item.data);
+        else if(item.action==='upsertBS')await DatabaseService.upsertBSItem(item.data.item, item.data.kind, item.data.yr);
+        else if(item.action==='deleteBS')await DatabaseService.deleteBSItem(item.data);
+        else if(item.action==='syncSettings')await DatabaseService.saveSettings(item.data);
+        else if(item.action==='replaceCloud')await DatabaseService.replaceCloudFromSnapshot(item.data);
       }catch(e){
         this._queue.unshift(item);this.save();
         SyncManager.setSyncDot('err');return;
@@ -1561,18 +1627,8 @@ async function doAuth() {
       await AuthManager.signIn(email, pwd);
     } else {
       await AuthManager.signUp(email, pwd);
-      // ส่ง email verification
-      var fbUser = window._FB && window._FB.auth && window._FB.auth.currentUser;
-      if (fbUser && !fbUser.emailVerified) {
-        try {
-          await window._FB.sendEmailVerification(fbUser);
-          okEl.textContent = '✅ สมัครสำเร็จ! กรุณายืนยันอีเมลที่ ' + email + ' ก่อนเข้าใช้งาน';
-          okEl.classList.add('on');
-        } catch(evErr) {
-          okEl.textContent = '✅ สมัครสำเร็จ กำลังเข้าสู่ระบบ...';
-          okEl.classList.add('on');
-        }
-      }
+      okEl.textContent = '✅ สมัครสมาชิกสำเร็จ กำลังเข้าสู่ระบบ...';
+      okEl.classList.add('on');
     }
   } catch(e) {
     errEl.textContent = mapAuthError(e.message);
@@ -1788,7 +1844,12 @@ async function saveGoal() {
   SyncManager.setSyncDot('ing');
   try {
     if (AuthManager.getUser()) {
-      g = await DatabaseService.upsertGoal(g);
+      if (navigator.onLine) {
+        g = await DatabaseService.upsertGoal(g);
+      } else {
+        g.id = g.id || (typeof crypto!=='undefined'&&crypto.randomUUID ? crypto.randomUUID() : Date.now()+'_'+Math.random());
+        OfflineQueue.add('upsertGoal', g);
+      }
       g.col = col; // keep col after upsert
     } else {
       g.id = g.id || Date.now();
@@ -1828,7 +1889,12 @@ async function saveBSI() {
   SyncManager.setSyncDot('ing');
   try {
     if (AuthManager.getUser()) {
-      item = await DatabaseService.upsertBSItem(item, bsmType, yr);
+      if (navigator.onLine) {
+        item = await DatabaseService.upsertBSItem(item, bsmType, yr);
+      } else {
+        item.id = item.id || (typeof crypto!=='undefined'&&crypto.randomUUID ? crypto.randomUUID() : Date.now()+'_'+Math.random());
+        OfflineQueue.add('upsertBS', {item:item, kind:bsmType, yr:yr});
+      }
     } else {
       item.id = item.id || Date.now();
     }
@@ -1907,35 +1973,6 @@ async function bootApp() {
   AuthManager.onAuthChange(async function(event, session) {
     var user = session ? session.user : null;
     if (user) {
-      // ── ตรวจ Email Verification (เฉพาะ email/password ไม่ใช่ Google) ──
-      var isEmailProvider = user.providerData && user.providerData.some(function(p){
-        return p.providerId === 'password';
-      });
-      if (isEmailProvider && !user.emailVerified) {
-        // ยังไม่ verify — แจ้งและ logout
-        AuthManager.setUser(null);
-        showAuth();
-        var errEl = document.getElementById('a-err');
-        if (errEl) errEl.textContent = '⚠️ กรุณายืนยันอีเมลก่อนเข้าใช้งาน (ตรวจกล่อง Inbox หรือ Spam)';
-        var resendBtn = document.getElementById('a-resend-verify');
-        if (!resendBtn) {
-          var btn = document.createElement('button');
-          btn.id = 'a-resend-verify';
-          btn.className = 'auth-btn';
-          btn.style.cssText = 'background:#EF9F27;margin-top:8px';
-          btn.textContent = '📧 ส่งอีเมลยืนยันใหม่';
-          btn.onclick = async function() {
-            try {
-              await window._FB.sendEmailVerification(user);
-              showToast('✅ ส่งอีเมลยืนยันแล้ว กรุณาตรวจกล่องจดหมาย');
-            } catch(e) { showToast('⚠️ ส่งไม่สำเร็จ: ' + e.message); }
-          };
-          if (errEl) errEl.parentNode.insertBefore(btn, errEl.nextSibling);
-        }
-        await AuthManager.signOut();
-        return;
-      }
-
       AuthManager.setUser(user);
       updateNavUser(user);
       hideAuth();
@@ -2261,9 +2298,19 @@ function buildMD(){
 
 // ====== BUDGETS ======
 var BUDS={};
-var CY=T.getFullYear();var sBY=CY,sBM=null,cBE=null,budCh=null;
+var CY=T.getFullYear();var sBY=CY,sBM=[],cBE=null,budCh=null;
 function getBCats(){return CATS.filter(function(c){return EXCL_CATS.indexOf(c)<0;});}
-function getBYrs(){return[CY-1,CY,CY+1];}
+function getBYrs(){
+  // รวบรวมปีจากรายการจริง + ปีปัจจุบัน ±1
+  var ySet={};
+  ySet[CY-1]=true; ySet[CY]=true; ySet[CY+1]=true;
+  TXS.forEach(function(t){
+    if(t.dt) ySet[parseInt(t.dt.split('-')[0])]=true;
+  });
+  // รวม BUDS ที่มีอยู่แล้ว
+  Object.keys(BUDS).forEach(function(y){ ySet[parseInt(y)]=true; });
+  return Object.keys(ySet).map(Number).sort();
+}
 function ensureBY(y){
   if(!BUDS[y]) BUDS[y]={};
   getBCats().forEach(function(c){
@@ -2278,7 +2325,14 @@ getBYrs().forEach(function(y){ensureBY(y);});
 // ====== GOALS ======
 var GOALS=[];
 var eGID=null;
-function calcGC(g){var ft=TXS.filter(function(t){return t.tp===g.link;}).reduce(function(s,t){return s+t.amt;},0);return(g.base||0)+ft;}
+function calcGC(g){
+  if(!g.link) return g.base||0;
+  // filter รายการที่ตรงกับหมวดที่เลือก (ทั้ง tp และ cat)
+  var total=TXS.filter(function(t){
+    return t.cat===g.link || t.tp===g.link;
+  }).reduce(function(s,t){return s+t.amt;},0);
+  return (g.base||0)+total;
+}
 
 // ====== BALANCE SHEET ======
 var ACAT=['เงินสด/ออม','กองทุนรวม','หุ้น','ทองคำ','อสังหาริมทรัพย์','รถยนต์','ประกันชีวิต','เงินบำนาญ','อื่นๆ'];
@@ -2290,7 +2344,15 @@ var BSD={};
 var bsmType='asset',bsmEId=null,bsmEYr=null;
 var bsMC=null,bsBarC=null,bsLC=null,bsDnutA=null,bsDnutD=null,bsRtCh=null;
 var bsCurTab='overview';
-function calcBSV(item){if(item.link){var ft=TXS.filter(function(t){return t.tp===item.link;}).reduce(function(s,t){return s+t.amt;},0);return(item.base||0)+ft;}return item.val||0;}
+function calcBSV(item){
+  if(item.link){
+    var ft=TXS.filter(function(t){
+      return t.cat===item.link || t.tp===item.link;
+    }).reduce(function(s,t){return s+t.amt;},0);
+    return (item.base||0)+ft;
+  }
+  return item.val||0;
+}
 function getBSYrs(){return Object.keys(BSD).map(Number).sort(function(a,b){return a-b;});}
 function bsSwTab(id,el){
   document.querySelectorAll('#pg-bs .tc').forEach(function(t){t.classList.remove('on');});
@@ -2419,6 +2481,10 @@ function removeCycle(k){
 }
 // ── modal จัดการรอบ ──────────────────────────────────────────
 function openCycleMgr(){
+  var cy = document.getElementById('cycle-yr');
+  var cm = document.getElementById('cycle-mo');
+  var cl = document.getElementById('cycle-mgr-list');
+  if (!cy || !cm || !cl) return;
   var now=new Date();
   var yOpts='';for(var y=now.getFullYear()-3;y<=now.getFullYear()+3;y++)yOpts+='<option value="'+y+'"'+(y===now.getFullYear()?' selected':'')+'>'+y+'</option>';
   var mOpts=MONTH_TH_FULL2.map(function(n,i){return'<option value="'+(i+1)+'"'+((i+1)===(now.getMonth()+1)?' selected':'')+'>'+n+'</option>';}).join('');
@@ -2802,7 +2868,7 @@ function rdDB(){
 // ── Export JSON (Backup) ─────────────────────────────────────
 function exportJSON(){
   var payload={
-    version:33, exportedAt:new Date().toISOString(),
+    version:(window._FB&&window._FB.appVersion)||'36.1.0', exportedAt:new Date().toISOString(),
     TXS:TXS, GOALS:GOALS, BSD:BSD, BUDS:BUDS,
     CATS:CATS, CAT:CAT, salary:salary, userName:userName
   };
@@ -2821,7 +2887,7 @@ function importJSON(){
   inp.onchange=function(e){
     var file=e.target.files[0]; if(!file)return;
     var reader=new FileReader();
-    reader.onload=function(ev){
+    reader.onload=async function(ev){
       try{
         var d=JSON.parse(ev.target.result);
         if(!d.TXS||!d.CATS){showToast('❌ ไฟล์ไม่ถูกต้อง');return;}
@@ -2834,7 +2900,19 @@ function importJSON(){
         if(d.CAT)CAT=d.CAT;
         if(d.salary)salary=d.salary;
         if(d.userName)userName=d.userName;
-        lsSave(); refreshAll();
+        lsSave();
+        if(AuthManager.getUser() && navigator.onLine){
+          SyncManager.setSyncDot('ing');
+          await DatabaseService.replaceCloudFromLocal();
+          SyncManager.setSyncDot('ok');
+        } else if(AuthManager.getUser()) {
+          OfflineQueue.add('replaceCloud', {
+            TXS:TXS, GOALS:GOALS, BSD:BSD, BUDS:BUDS, CATS:CATS, CAT:CAT,
+            userName:userName, salary:salary, isDark:isDark
+          });
+          SyncManager.setSyncDot('err');
+        }
+        refreshAll();
         showToast('✅ Import สำเร็จ '+TXS.length+' รายการ');
       }catch(err){
         showToast('❌ อ่านไฟล์ไม่ได้: '+err.message);
@@ -2870,7 +2948,7 @@ function exportPDF(){
   html+='<table><tr><th>ประเภท</th><th class="right">จำนวน (฿)</th></tr><tr><td>รายรับ</td><td class="right" style="color:#1D9E75">'+f(data.inc)+'</td></tr><tr><td>ออม</td><td class="right" style="color:#378ADD">'+f(data.sav)+'</td></tr><tr><td>ลงทุน</td><td class="right" style="color:#7F77DD">'+f(data.inv)+'</td></tr><tr><td>รายจ่ายรวม</td><td class="right" style="color:#D85A30">'+f(data.exp)+'</td></tr><tr class="rem-row"><td>คงเหลือ</td><td class="right">'+f(rem)+'</td></tr></table>';
   html+='<h3 style="margin-bottom:12px">รายจ่ายแยกหมวด</h3><table><tr><th>หมวด</th><th class="right">จำนวน (฿)</th><th class="right">%</th></tr>';
   var totE=data.exp||1;Object.entries(data.cats).sort(function(a,b){return b[1]-a[1];}).forEach(function(e){html+='<tr><td>'+e[0]+'</td><td class="right">'+f(e[1])+'</td><td class="right">'+Math.round(e[1]/totE*100)+'%</td></tr>';});
-  html+='</table><div class="footer">สร้างโดย FlowFinance v2 — '+fd(T)+'</div><scr'+'ipt>window.onload=function(){window.print()}<\/scr'+'ipt></body></html>';
+  html+='</table><div class="footer">สร้างโดย FlowFinance '+((window._FB&&window._FB.appVersion)||'36.1.0')+' — '+fd(T)+'</div><scr'+'ipt>window.onload=function(){window.print()}<\/scr'+'ipt></body></html>';
   var w=window.open('','_blank');if(w){w.document.write(html);w.document.close();}
 }
 function exportHTML(){
@@ -2879,41 +2957,86 @@ function exportHTML(){
 }
 function clearAllData(){if(!confirm('ล้างรายการทั้งหมด? ไม่สามารถกู้คืนได้'))return;TXS=[];lsSave();showToast('ล้างข้อมูลแล้ว');rdDB();}
 
-function confirmClearAll(){
+async function confirmClearAll(){
   if(!confirm('⚠️ ยืนยันครั้งที่ 1\n\nล้างข้อมูลรายการทั้งหมด?\nการกระทำนี้ไม่สามารถกู้คืนได้'))return;
   if(!confirm('⚠️ ยืนยันครั้งที่ 2\n\nแน่ใจแล้วหรือ? ข้อมูลทุกรายการจะหายไปถาวร'))return;
   var typed=prompt('พิมพ์คำว่า "ลบข้อมูล" เพื่อยืนยัน');
   if(typed!=='ลบข้อมูล'){showToast('ยกเลิกการลบ');return;}
-  // เก็บ ids ก่อนล้าง
-  var txIds=TXS.map(function(t){return t.id;});
-  var goalIds=GOALS.map(function(g){return g.id;});
   TXS=[];GOALS=[];BSD={};
   if(AuthManager.getUser()){
     SyncManager.setSyncDot('ing');
-    var tasks=[];
-    txIds.forEach(function(id){tasks.push(DatabaseService.deleteTransaction(id).catch(function(){}));});
-    goalIds.forEach(function(id){tasks.push(DatabaseService.deleteGoal(id).catch(function(){}));});
-    Promise.all(tasks).then(function(){SyncManager.setSyncDot('ok');}).catch(function(){SyncManager.setSyncDot('err');});
+    try{
+      if(navigator.onLine) {
+        await DatabaseService.clearUserData();
+        SyncManager.setSyncDot('ok');
+      } else {
+        OfflineQueue.add('replaceCloud', {TXS:[], GOALS:[], BSD:{}, BUDS:BUDS, CATS:CATS, CAT:CAT, userName:userName, salary:salary, isDark:isDark});
+        SyncManager.setSyncDot('err');
+      }
+    }catch(e){
+      SyncManager.setSyncDot('err');
+      showToast('⚠️ ลบข้อมูลบน Cloud ไม่สำเร็จ: '+e.message);
+      return;
+    }
   }
+  lsSave();
   refreshAll();
   showToast('🗑️ ล้างข้อมูลทั้งหมดแล้ว');
 }
 
 // ====== BUDGET ======
+function addBudYear(){
+  var maxY=Math.max.apply(null,getBYrs());
+  var newY=maxY+1;
+  ensureBY(newY);
+  sBY=newY;
+  lsSave();
+  renderBud();
+  showToast('✅ เพิ่มปี '+newY+' แล้ว');
+}
+
 function renderBud(){
   var yrs=getBYrs();var yEl=document.getElementById('bud-yrs');
-  yEl.innerHTML=yrs.map(function(y){return'<button class="bud-ybtn'+(y===sBY?' on':'')+'" data-y="'+y+'">'+y+'</button>';}).join('');
+  if(!yEl)return;
+  yEl.innerHTML=yrs.map(function(y){
+    return'<button class="bud-ybtn'+(y===sBY?' on':'')+'" data-y="'+y+'">'+y+'</button>';
+  }).join('')+'<button class="bud-ybtn" style="color:#1D9E75;border-color:#1D9E75" onclick="addBudYear()" title="เพิ่มปีถัดไป">＋</button>';
+  yEl.querySelectorAll('.bud-ybtn[data-y]').forEach(function(b){
+    b.addEventListener('click',function(){
+      sBY=parseInt(this.getAttribute('data-y'));
+      ensureBY(sBY);
+      yEl.querySelectorAll('.bud-ybtn').forEach(function(x){x.classList.remove('on');});
+      this.classList.add('on');
+      renderBudTbl();renderBudCh();
+    });
+  });
   yEl.querySelectorAll('.bud-ybtn').forEach(function(b){b.addEventListener('click',function(){sBY=parseInt(this.getAttribute('data-y'));ensureBY(sBY);yEl.querySelectorAll('.bud-ybtn').forEach(function(x){x.classList.remove('on');});this.classList.add('on');renderBudTbl();renderBudCh();});});
   renderBudMBtns();renderBudTbl();renderBudCh();
 }
 function renderBudMBtns(){
   var el=document.getElementById('bud-mbs');
-  el.innerHTML='<button class="bud-mbtn'+(sBM===null?' on':'')+'" data-m="all">ทั้งหมด</button>'+MOS.map(function(m,i){return'<button class="bud-mbtn'+(sBM===i?' on':'')+'" data-m="'+i+'">'+m+'</button>';}).join('');
-  el.querySelectorAll('.bud-mbtn').forEach(function(b){b.addEventListener('click',function(){var v=this.getAttribute('data-m');sBM=(v==='all'?null:parseInt(v));el.querySelectorAll('.bud-mbtn').forEach(function(x){x.classList.remove('on');});this.classList.add('on');updBudClr();renderBudTbl();renderBudCh();});});
+  if(!el)return;
+  var allOn=sBM.length===0;
+  el.innerHTML='<button class="bud-mbtn'+(allOn?' on':'')+'" data-m="all">ทั้งหมด</button>'
+    +MOS.map(function(m,i){
+      return'<button class="bud-mbtn'+(sBM.indexOf(i)>=0?' on':'')+'" data-m="'+i+'">'+m+'</button>';
+    }).join('');
+  el.querySelectorAll('.bud-mbtn').forEach(function(b){
+    b.addEventListener('click',function(){
+      var v=this.getAttribute('data-m');
+      if(v==='all'){ sBM=[]; }
+      else {
+        var mi=parseInt(v),idx=sBM.indexOf(mi);
+        if(idx>=0) sBM.splice(idx,1); else sBM.push(mi);
+        sBM.sort(function(a,b){return a-b;});
+      }
+      renderBudMBtns();updBudClr();renderBudTbl();renderBudCh();
+    });
+  });
   updBudClr();
 }
-function updBudClr(){document.getElementById('bud-clr').style.display=sBM!==null?'flex':'none';}
-function clearBM(){sBM=null;renderBudMBtns();renderBudTbl();renderBudCh();}
+function updBudClr(){var c=document.getElementById('bud-clr');if(c)c.style.display=sBM.length>0?'flex':'none';}
+function clearBM(){sBM=[];renderBudMBtns();renderBudTbl();renderBudCh();}
 function renderBudTbl(){
   ensureBY(sBY);var cats=getBCats();var md=buildMD();
   // ตรวจว่ายังไม่เคยตั้งงบเลย
@@ -2949,7 +3072,7 @@ function renderBudTbl(){
 
 function renderBudTblFull(){
   ensureBY(sBY);var cats=getBCats();var md=buildMD();
-  var months=sBM!==null?[sBM]:Array.from({length:12},function(_,i){return i;});
+  var months=sBM.length>0?sBM:Array.from({length:12},function(_,i){return i;});
   var html='<thead><tr><th>หมวด</th>';
   months.forEach(function(m){
     html+='<th style="color:#1D9E75">งบ '+MOS[m]+'</th><th style="color:#378ADD">จริง '+MOS[m]+'</th>';
@@ -3028,10 +3151,23 @@ function confirmDelBudCat(cat){
 }
 function renderBudCh(){
   var ctx=document.getElementById('bud-ch');if(!ctx)return;if(budCh)budCh.destroy();
-  var cats=getBCats();var m=sBM!==null?sBM:T.getMonth();ensureBY(sBY);var md=buildMD();
-  var bD=cats.map(function(c){return BUDS[sBY][c]?BUDS[sBY][c][m]||0:0;});
-  var mk=sBY+'-'+(m+1);var sD=cats.map(function(c){return(md[mk]&&md[mk].cats[c])||0;});
-  budCh=new Chart(ctx,{type:'bar',data:{labels:cats,datasets:[{label:'งบประมาณ',data:bD,backgroundColor:rba('#1D9E75',.5),borderColor:'#1D9E75',borderWidth:1.5,borderRadius:4},{label:'จริง',data:sD,backgroundColor:cats.map(function(c,i){return sD[i]>bD[i]?rba('#D85A30',.8):rba('#378ADD',.75);}),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:10},boxWidth:10}}},scales:{x:{ticks:{font:{size:10}},grid:{display:false}},y:{ticks:{font:{size:10},callback:function(v){return v>=1000?(v/1000)+'k':v;}},grid:{color:gridColor()}}}}});
+  var cats=getBCats();ensureBY(sBY);var md=buildMD();
+  // ถ้าเลือกหลายเดือน รวมยอดทุกเดือนที่เลือก
+  var months=sBM.length>0?sBM:Array.from({length:12},function(_,i){return i;});
+  var bD=cats.map(function(c){
+    return months.reduce(function(s,m){return s+(BUDS[sBY][c]?BUDS[sBY][c][m]||0:0);},0);
+  });
+  var sD=cats.map(function(c){
+    return months.reduce(function(s,m){
+      var mk=sBY+'-'+(m+1);
+      return s+((md[mk]&&md[mk].cats[c])||0);
+    },0);
+  });
+  var lbl=sBM.length===0?'ทั้งปี':sBM.length===1?MOS[sBM[0]]:sBM.map(function(m){return MOS[m];}).join(', ');
+  budCh=new Chart(ctx,{type:'bar',data:{labels:cats,datasets:[
+    {label:'งบ ('+lbl+')',data:bD,backgroundColor:rba('#1D9E75',.5),borderColor:'#1D9E75',borderWidth:1.5,borderRadius:4},
+    {label:'จริง ('+lbl+')',data:sD,backgroundColor:cats.map(function(c,i){return sD[i]>bD[i]?rba('#D85A30',.8):rba('#378ADD',.75);}),borderRadius:4}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:10},boxWidth:10}}},scales:{x:{ticks:{font:{size:10}},grid:{display:false}},y:{ticks:{font:{size:10},callback:function(v){return v>=1000?(v/1000)+'k':v;}},grid:{color:gridColor()}}}}});
 }
 
 // ====== GOALS ======
@@ -3043,17 +3179,25 @@ function renderGoals(){
   }
   el.innerHTML=GOALS.map(function(g){var cu=calcGC(g);var pct=Math.min(Math.round(cu/g.tg*100),100);var mo=g.mo>0?Math.ceil((g.tg-cu)/g.mo):'-';var ll=g.link==='savings'?'🔗 ออม':g.link==='invest'?'🔗 ลงทุน':'';return'<div class="gc"><div class="gt"><span>'+esc(g.nm)+'</span><div style="display:flex;gap:5px"><button class="btn-sm" data-gid="'+g.id+'" data-a="edit">✎</button><button class="btn-sm" data-gid="'+g.id+'" data-a="del" style="color:#D85A30">🗑</button></div></div><div class="gs">ตั้งต้น '+f(g.base||0)+' '+ll+' · เก็บต่อเดือน '+f(g.mo)+' · อีก ~'+mo+' เดือน</div><div class="gp"><div class="gpf" style="width:'+pct+'%;background:'+g.col+'"></div></div><div class="gn"><span style="font-size:14px;font-weight:700;color:'+g.col+'">'+f(cu)+'</span><span>'+pct+'% · เป้า '+f(g.tg)+'</span></div></div>';}).join('')+'<button style="display:flex;align-items:center;gap:5px;padding:10px;font-size:12px;border:.5px dashed var(--bdr);border-radius:var(--r);background:transparent;color:var(--t2);cursor:pointer;width:100%;justify-content:center;margin-top:4px" id="add-gb">+ เพิ่มเป้าหมายใหม่</button>';
   el.querySelectorAll('[data-a="edit"]').forEach(function(b){b.addEventListener('click',function(){openGM(this.getAttribute('data-gid'));});});
-  el.querySelectorAll('[data-a="del"]').forEach(function(b){b.addEventListener('click',async function(){var id=this.getAttribute('data-gid');if(!confirm('ลบเป้าหมายนี้?'))return;SyncManager.setSyncDot('ing');try{if(AuthManager.getUser())await DatabaseService.deleteGoal(id);}catch(e){showToast('⚠️ ลบไม่สำเร็จ');SyncManager.setSyncDot('err');return;}GOALS=GOALS.filter(function(g){return String(g.id)!==String(id);});lsSave();SyncManager.setSyncDot('ok');renderGoals();});});
+el.querySelectorAll('[data-a="del"]').forEach(function(b){b.addEventListener('click',async function(){var id=this.getAttribute('data-gid');if(!confirm('ลบเป้าหมายนี้?'))return;SyncManager.setSyncDot('ing');try{if(AuthManager.getUser()){if(navigator.onLine)await DatabaseService.deleteGoal(id);else OfflineQueue.add('deleteGoal',id);}}catch(e){showToast('⚠️ ลบไม่สำเร็จ');SyncManager.setSyncDot('err');return;}GOALS=GOALS.filter(function(g){return String(g.id)!==String(id);});lsSave();SyncManager.setSyncDot(navigator.onLine?'ok':'err');renderGoals();});});
   document.getElementById('add-gb').addEventListener('click',function(){openGM();});
 }
 function openGM(id){
   eGID=id||null;
   document.getElementById('gm-t').textContent=id?'แก้ไขเป้าหมาย':'เพิ่มเป้าหมาย';
   var g=id?GOALS.find(function(x){return String(x.id)===String(id);}):null;
+
+  // Populate link dropdown จาก CATS จริง
+  var linkSel=document.getElementById('g-link');
+  var curLink=g?(g.link||''):'';
+  linkSel.innerHTML='<option value="">ไม่เชื่อม</option>'
+    +CATS.map(function(c){
+      return'<option value="'+c+'"'+(c===curLink?' selected':'')+'>'+c+'</option>';
+    }).join('');
+
   document.getElementById('g-name').value=g?g.nm:'';
   document.getElementById('g-tg').value=g?g.tg:'';
   document.getElementById('g-base').value=g?(g.base||0):'';
-  document.getElementById('g-link').value=g?(g.link||''):'';
   document.getElementById('g-mo').value=g?g.mo:'';
   var col=g?(g.col||'#1D9E75'):'#1D9E75';
   document.getElementById('g-col').value=col;
@@ -3669,7 +3813,15 @@ function openBSM(type,ei,ey){
   document.getElementById('bs-cat').innerHTML=cats.map(function(c){return'<option'+(ei&&ei.cat===c?' selected':'')+'>'+c+'</option>';}).join('');
   document.getElementById('bs-nm').value=ei?ei.name:'';
   document.getElementById('bs-base').value=ei?(ei.base||0):'';
-  document.getElementById('bs-lk').value=ei?(ei.link||''):'';
+
+  // Populate "ดึงจากบันทึก" จาก CATS จริง
+  var curLink=ei?(ei.link||''):'';
+  var lkEl=document.getElementById('bs-lk');
+  lkEl.innerHTML='<option value="">ไม่ดึง</option>'
+    +CATS.map(function(c){
+      return'<option value="'+c+'"'+(c===curLink?' selected':'')+'>ดึงจาก "'+c+'"</option>';
+    }).join('');
+
   document.getElementById('bs-val').value=ei&&!ei.link?(ei.val||0):'';
   document.getElementById('bs-inst').value=ei?(ei.inst||''):'';
   document.getElementById('bs-acc').value=ei?(ei.acc||''):'';
@@ -3696,11 +3848,14 @@ function openBSD(item,type,year){
     if(!confirm('ลบ "'+item.name+'" ออก?'))return;
     SyncManager.setSyncDot('ing');
     try {
-      if(AuthManager.getUser()) await DatabaseService.deleteBSItem(item.id);
+      if(AuthManager.getUser()) {
+        if(navigator.onLine) await DatabaseService.deleteBSItem(item.id);
+        else OfflineQueue.add('deleteBS', item.id);
+      }
       if(type==='asset')BSD[year].assets=BSD[year].assets.filter(function(x){return x.id!==item.id;});
       else BSD[year].debts=BSD[year].debts.filter(function(x){return x.id!==item.id;});
       closeBSD();renderBS();lsSave();showToast('ลบแล้ว');
-      SyncManager.setSyncDot('ok');
+      SyncManager.setSyncDot(navigator.onLine?'ok':'err');
     } catch(e) {
       SyncManager.setSyncDot('err');
       showToast('⚠️ ลบไม่สำเร็จ: '+e.message);
