@@ -64,7 +64,6 @@ window.renderIcons = function(root) {
     var span = document.createElement('span');
     span.className = 'ti';
     span.style.cssText = el.style.cssText;
-    if (el.id) span.id = el.id; // preserve id
     span.innerHTML = svg;
     el.parentNode.replaceChild(span, el);
   });
@@ -74,13 +73,13 @@ window.renderIcons = function(root) {
 <!-- Firebase SDK -->
 <script type="module">
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import{getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,getRedirectResult,signOut,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,sendSignInLinkToEmail,isSignInWithEmailLink,signInWithEmailLink}from'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,sendSignInLinkToEmail,isSignInWithEmailLink,signInWithEmailLink}from'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import{getFirestore,collection,doc,addDoc,setDoc,getDoc,getDocs,updateDoc,deleteDoc,query,where,orderBy,serverTimestamp,writeBatch}from'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 // ── Firebase Config ──────────────────────────────────────────
 const FB_CFG = {
   apiKey:            "AIzaSyDvgg4_oN8SLzTKMpqgGBoO-0bR3Ert3l0",
-  authDomain:        "thodsapon13791.github.io",
+  authDomain:        "flowfinancev1-9584d.firebaseapp.com",
   projectId:         "flowfinancev1-9584d",
   storageBucket:     "flowfinancev1-9584d.firebasestorage.app",
   messagingSenderId: "104788184166",
@@ -101,7 +100,7 @@ const _doc = (c,id) => doc(_fbDb,'users',_uid(),c,String(id));
 // ── expose to global scope (ใช้ใน AuthManager / DatabaseService) ──
 window._FB = {
   auth:_fbAuth, db:_fbDb,
-  GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut,
+  GoogleAuthProvider, signInWithPopup, signOut,
   onAuthStateChanged, signInWithEmailAndPassword,
   createUserWithEmailAndPassword, sendPasswordResetEmail,
   sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink,
@@ -780,10 +779,6 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg0);color:
   <div class="tx-summary" id="tx-summary"></div>
   <div class="srchbar">
     <input type="text" id="tx-srch" placeholder="&#128269; ค้นหารายการ..." oninput="setTxV(txV,null)">
-    <select id="tx-fdate" onchange="setTxV(txV,null)">
-      <option value="cycle">รอบนี้</option>
-      <option value="all">ทั้งหมด</option>
-    </select>
     <select id="tx-ftype" onchange="setTxV(txV,null)">
       <option value="">ทุกประเภท</option>
       <option value="income">รายรับ</option>
@@ -1307,44 +1302,25 @@ function buildSettingsPayload() {
   return {
     BUDS: BUDS, CATS: CATS, CAT: CAT,
     CPD_raw: Object.fromEntries(Object.entries(CPD).map(function(e){return[e[0],e[1].toISOString()];})),
-    CED: CED, CKS: CKS, CNF: CNF, CNS: CNS,
-    userName: userName, salary: salary, isDark: isDark
+    CED: CED, userName: userName, salary: salary, isDark: isDark
   };
 }
 
 function applySettings(s) {
   if (!s) return;
   if (s.BUDS) BUDS = s.BUDS;
-  if (s.CATS && s.CATS.length) CATS = s.CATS;
+  if (s.CATS) CATS = s.CATS;
   if (s.CAT) CAT = s.CAT;
-  if (s.CPD_raw) Object.entries(s.CPD_raw).forEach(function(e){
-    if(!CPD[e[0]]) { CNF[e[0]]=CNF[e[0]]||cycName(parseInt(e[0]),parseInt(e[0].split('-')[1])); }
-    CPD[e[0]]=new Date(e[1]);
-  });
+  if (s.CPD_raw) Object.entries(s.CPD_raw).forEach(function(e){CPD[e[0]]=new Date(e[1]);});
   if (s.CED) CED = s.CED;
-  if (s.CKS && s.CKS.length) {
-    // merge saved cycles with generated ones (keep all)
-    s.CKS.forEach(function(k){
-      if(CKS.indexOf(k)<0){
-        CKS.push(k);
-        var parts=k.split('-');
-        CNF[k]=s.CNF&&s.CNF[k]?s.CNF[k]:cycName(parseInt(parts[0]),parseInt(parts[1]));
-        CNS[k]=s.CNS&&s.CNS[k]?s.CNS[k]:cycShort(parseInt(parts[0]),parseInt(parts[1]));
-        DEFS[k]=new Date(parseInt(parts[0]),parseInt(parts[1])-2,paydayDay);
-        if(!CPD[k])CPD[k]=cl(DEFS[k]);
-        CED[k]=false;
-        var idx=CKS.sort().indexOf(k);
-        CIC.splice(idx,0,CYC_COLORS[idx%CYC_COLORS.length]);
-        CIB.splice(idx,0,CYC_BGS[idx%CYC_BGS.length]);
-      }
-    });
-    CKS.sort();
-  }
   if (s.userName !== undefined) userName = s.userName;
   if (s.salary) salary = s.salary;
   if (s.isDark !== undefined) isDark = s.isDark;
 }
 
+// ════════════════════════════════════════════════════
+// Auth UI functions
+// ════════════════════════════════════════════════════
 // ════════════════════════════════════════════════════
 // Auth UI functions — Validation, UX, Error mapping
 // ════════════════════════════════════════════════════
@@ -1558,44 +1534,40 @@ async function signOut() {
 }
 
 function updateNavUser(user) {
-  // ดึง user ล่าสุดจาก Firebase currentUser เสมอ (มี displayName/metadata ครบ)
-  var fbUser = (window._FB && window._FB.auth && window._FB.auth.currentUser) || user;
   var navU = document.getElementById('nav-user');
   var soBtn = document.getElementById('sign-out-btn');
-  if (fbUser) {
+  if (user) {
     navU.style.display = 'flex';
     soBtn.style.display = 'block';
-    var nm = fbUser.displayName || fbUser.email || 'ผู้ใช้';
-    var em = fbUser.email || '';
+    var nm = user.displayName || user.email || 'ผู้ใช้';
+    var em = user.email || '';
     var av = (nm[0]||'U').toUpperCase();
     document.getElementById('nav-email').textContent = nm;
     document.getElementById('nav-av').textContent = av;
     // Settings page
-    var sAv=document.getElementById('set-av'); if(sAv) sAv.textContent=av;
-    var sNm=document.getElementById('set-uname'); if(sNm) sNm.textContent=nm;
-    var sEm=document.getElementById('set-uemail'); if(sEm) sEm.textContent=em;
-    // เริ่มใช้งาน
-    var joined=document.getElementById('set-joined');
-    if(joined){
-      if(fbUser.metadata && fbUser.metadata.creationTime){
-        joined.textContent=new Date(fbUser.metadata.creationTime).toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
-      } else { joined.textContent='—'; }
+    var sAv = document.getElementById('set-av'); if(sAv) sAv.textContent = av;
+    var sNm = document.getElementById('set-uname'); if(sNm) sNm.textContent = nm;
+    var sEm = document.getElementById('set-uemail'); if(sEm) sEm.textContent = em;
+    // เริ่มใช้งาน — จาก Firebase createdAt
+    var joined = document.getElementById('set-joined');
+    if(joined && user.metadata && user.metadata.creationTime) {
+      var d = new Date(user.metadata.creationTime);
+      joined.textContent = d.toLocaleDateString('th-TH', {day:'numeric', month:'long', year:'numeric'});
     }
-    // อัพเดทล่าสุด
-    var lastSync=document.getElementById('set-lastsync');
-    if(lastSync){
-      if(fbUser.metadata && fbUser.metadata.lastSignInTime){
-        lastSync.textContent=new Date(fbUser.metadata.lastSignInTime).toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
-      } else { lastSync.textContent='—'; }
+    // อัพเดทล่าสุด — จาก lastSignInTime
+    var lastSync = document.getElementById('set-lastsync');
+    if(lastSync && user.metadata && user.metadata.lastSignInTime) {
+      var d2 = new Date(user.metadata.lastSignInTime);
+      lastSync.textContent = d2.toLocaleDateString('th-TH', {day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit'});
     }
     // Dashboard greeting
-    var grEl=document.getElementById('db-greeting');
-    var hr=new Date().getHours();
-    var greet=hr<12?'อรุณสวัสดิ์':hr<17?'สวัสดีตอนบ่าย':'สวัสดีตอนเย็น';
-    if(grEl) grEl.textContent=greet+', '+nm+' 👋';
+    var grEl = document.getElementById('db-greeting');
+    var hr = new Date().getHours();
+    var greet = hr < 12 ? 'อรุณสวัสดิ์' : hr < 17 ? 'สวัสดีตอนบ่าย' : 'สวัสดีตอนเย็น';
+    if(grEl) grEl.textContent = greet + ', ' + nm + ' 👋';
   } else {
-    navU.style.display='none';
-    soBtn.style.display='none';
+    navU.style.display = 'none';
+    soBtn.style.display = 'none';
   }
 }
 
@@ -1683,7 +1655,7 @@ async function saveGoal() {
       g.id = g.id || Date.now();
     }
     if (eGID) {
-      var gx = GOALS.find(function(x){return String(x.id)===String(eGID);});
+      var gx = GOALS.find(function(x){return x.id===eGID;});
       if (gx) Object.assign(gx, g);
     } else {
       GOALS.push(g);
@@ -1724,7 +1696,7 @@ async function saveBSI() {
     if (!BSD[yr]) BSD[yr] = {assets:[], debts:[]};
     if (bsmEId) {
       var list = bsmType==='asset' ? BSD[bsmEYr||yr].assets : BSD[bsmEYr||yr].debts;
-      var idx = list.findIndex(function(x){return String(x.id)===String(bsmEId);});
+      var idx = list.findIndex(function(x){return x.id===bsmEId;});
       if (idx>=0) list[idx]=item;
     } else {
       if (bsmType==='asset') BSD[yr].assets.push(item);
@@ -1743,7 +1715,7 @@ async function saveBSI() {
 // bootApp — entry point
 // ════════════════════════════════════════════════════
 async function bootApp() {
-  // รอให้ Firebase module โหลดก่อน (max 5 วินาที)
+  // รอให้ Firebase module โหลดก่อน
   var waitFB = function(n) {
     return new Promise(function(res) {
       var t = setInterval(function() {
@@ -1751,64 +1723,55 @@ async function bootApp() {
       }, 100);
     });
   };
-  await waitFB(100); // รอ 10 วิ (เพิ่มเผื่อ network ช้าบน GitHub Pages)
+  await waitFB(30);
 
   AuthManager.init();
 
-  // เตรียม UI พื้นฐานก่อนเสมอ
-  lsLoad(); applyT(); ensureFutureBuffer();
-  initBSYrSel(); renderDbDrop();
-  populateTxFilter(); renderSalLbl();
-  if (userName) { var sn=document.getElementById('set-name'); if(sn) sn.value=userName; }
-
   if (!AuthManager.isConfigured()) {
-    // Firebase โหลดไม่สำเร็จ — แสดงหน้า Login พร้อมแจ้งเตือน
-    showAuth();
+    lsLoad(); applyT(); initBSYrSel(); renderDbDrop();
+    dbQR('month', document.getElementById('db-qm'));
+    populateTxFilter(); renderSalLbl();
+    if (userName) document.getElementById('set-name').value = userName;
     SyncManager.setSyncDot('err');
-    showToast('⚠️ Firebase โหลดไม่สำเร็จ กรุณารีเฟรชหน้า');
     return;
   }
 
   AuthManager.onAuthChange(async function(event, session) {
     var user = session ? session.user : null;
     if (user) {
-      if (AuthManager.getUser() && AuthManager.getUser().uid === user.uid) return;
       AuthManager.setUser(user);
       updateNavUser(user);
       hideAuth();
       showLoader('กำลังโหลดข้อมูลของคุณ...');
       try {
         var all = await DatabaseService.loadAll();
-        if (all.txs.length)   TXS   = all.txs;
-        if (all.goals.length) GOALS = all.goals;
+        TXS   = all.txs.length   ? all.txs   : TXS;
+        GOALS = all.goals.length  ? all.goals  : GOALS;
         if (Object.keys(all.bs).length) BSD = all.bs;
         applySettings(all.settings);
-        syncCAT(); ensureFutureBuffer();
         lsSave();
         SyncManager.setSyncDot('ok');
       } catch(e) {
         console.error('loadAll failed:', e);
+        lsLoad();
         showToast('⚠️ โหลดข้อมูลจาก Cloud ไม่สำเร็จ ใช้ข้อมูล Local แทน');
         SyncManager.setSyncDot('err');
       }
       hideLoader();
-      if(window._FB && window._FB.auth && window._FB.auth.currentUser){
-        updateNavUser(window._FB.auth.currentUser);
-      }
-      applyT(); ensureFutureBuffer(); initBSYrSel(); renderDbDrop();
+      applyT(); initBSYrSel(); renderDbDrop();
       dbQR('month', document.getElementById('db-qm'));
       populateTxFilter(); renderSalLbl();
-      if (userName) { var sn=document.getElementById('set-name'); if(sn) sn.value=userName; }
+      if (userName) document.getElementById('set-name').value = userName;
       goP('db', document.querySelector('.ni'));
     } else {
       AuthManager.setUser(null);
       updateNavUser(null);
-      showAuth();
+      lsLoad(); applyT(); showAuth();
     }
   });
 
   var session = await AuthManager.getSession();
-  if (!session) { showAuth(); }
+  if (!session) { lsLoad(); applyT(); showAuth(); }
 }
 
 // ====== DATE ======
@@ -1839,31 +1802,11 @@ function lsLoad(){
     var raw=localStorage.getItem(LS_KEY);
     if(!raw)return false;
     var d=JSON.parse(raw);
-    if(d.TXS)TXS=d.TXS;
-    if(d.BUDS)BUDS=d.BUDS;
-    if(d.GOALS)GOALS=d.GOALS;
-    if(d.BSD)BSD=d.BSD;
-    if(d.CATS&&d.CATS.length)CATS=d.CATS;
-    if(d.CAT)CAT=d.CAT;
+    if(d.TXS)TXS=d.TXS;if(d.BUDS)BUDS=d.BUDS;if(d.GOALS)GOALS=d.GOALS;if(d.BSD)BSD=d.BSD;
+    if(d.CATS)CATS=d.CATS;if(d.CAT)CAT=d.CAT;
     if(d.CPD_raw){Object.entries(d.CPD_raw).forEach(function(e){CPD[e[0]]=new Date(e[1]);});}
-    if(d.CED)CED=d.CED;
-    if(d.CKS&&d.CKS.length){
-      d.CKS.forEach(function(k){
-        if(CKS.indexOf(k)<0){
-          CKS.push(k);
-          var p=k.split('-');
-          CNF[k]=d.CNF&&d.CNF[k]?d.CNF[k]:cycName(parseInt(p[0]),parseInt(p[1]));
-          CNS[k]=d.CNS&&d.CNS[k]?d.CNS[k]:cycShort(parseInt(p[0]),parseInt(p[1]));
-          DEFS[k]=new Date(parseInt(p[0]),parseInt(p[1])-2,paydayDay);
-          if(!CPD[k])CPD[k]=cl(DEFS[k]);
-          CED[k]=CED[k]||false;
-        }
-      });
-      CKS.sort();
-    }
-    if(d.userName!==undefined)userName=d.userName;
-    if(d.salary)salary=d.salary;
-    if(d.isDark!==undefined)isDark=d.isDark;
+    if(d.CED)CED=d.CED;if(d.userName!==undefined)userName=d.userName;
+    if(d.salary)salary=d.salary;if(d.isDark!==undefined)isDark=d.isDark;
     return true;
   }catch(e){console.error('lsLoad error:',e);return false;}
 }
@@ -1877,50 +1820,43 @@ var isDark=true;
 function toggleTheme(){isDark=!isDark;applyT();lsSave();}
 function setTheme(m){isDark=(m==='dark');applyT();lsSave();}
 function applyT(){
-  var app=document.getElementById('app');
-  if(app) app.classList.toggle('L',!isDark);
+  document.getElementById('app').classList.toggle('L',!isDark);
   var ic=document.getElementById('ti'),lb=document.getElementById('tl');
-  if(ic) ic.className='ti '+(isDark?'ti-moon':'ti-sun');
-  if(lb) lb.textContent=isDark?'โหมดมืด':'โหมดสว่าง';
-  var sdk=document.getElementById('set-dk'),slt=document.getElementById('set-lt');
-  if(sdk) sdk.classList.toggle('on',isDark);
-  if(slt) slt.classList.toggle('on',!isDark);
-  var pgdb=document.getElementById('pg-db'),pgana=document.getElementById('pg-ana');
-  if(pgdb&&pgdb.classList.contains('on'))rdDB();
-  if(pgana&&pgana.classList.contains('on'))rAna();
+  if(isDark){ic.className='ti ti-moon';lb.textContent='โหมดมืด';}else{ic.className='ti ti-sun';lb.textContent='โหมดสว่าง';}
+  document.getElementById('set-dk').classList.toggle('on',isDark);
+  document.getElementById('set-lt').classList.toggle('on',!isDark);
+  if(document.getElementById('pg-db').classList.contains('on'))rdDB();
+  if(document.getElementById('pg-ana').classList.contains('on'))rAna();
 }
 
 // ── refreshAll: เรียกหลังทุก action ที่แก้ข้อมูล ──────────
 function refreshAll() {
   lsSave();
-  syncCAT();
   var onDB  = document.getElementById('pg-db').classList.contains('on');
   var onTX  = document.getElementById('pg-tx').classList.contains('on');
   var onBUD = document.getElementById('pg-bud').classList.contains('on');
   var onSAV = document.getElementById('pg-sav').classList.contains('on');
   var onANA = document.getElementById('pg-ana').classList.contains('on');
   var onBS  = document.getElementById('pg-bs').classList.contains('on');
-  var onSET = document.getElementById('pg-set').classList.contains('on');
 
-  if (onDB)  rdDB();
+  if (onDB)  { rdDB(); }
   if (onTX)  { populateTxFilter(); setTxV(txV, null); }
-  if (onBUD) renderBud();
-  if (onSAV) renderGoals();
-  if (onANA) rAna();
-  if (onBS)  renderBS();
-  if (onSET) { renderSalLbl(); renderSetChips(); }
+  if (onBUD) { renderBud(); }
+  if (onSAV) { renderGoals(); }
+  if (onANA) { rAna(); }
+  if (onBS)  { renderBS(); }
 
-  renderSalLbl(); // always update salary label in topnav
+  // re-render icons หลัง dynamic content ทุกหน้า
   setTimeout(function() { renderIcons(document.getElementById('app')); }, 50);
 }
 
 // ====== PROFILE / SALARY ======
 var userName='';
-var salary={monthly:0,extra:0};
+var salary={monthly:45000,extra:0};
 function saveName(){userName=document.getElementById('set-name').value;lsSave();}
 function openSalM(){document.getElementById('sal-amt').value=salary.monthly||'';document.getElementById('sal-extra').value=salary.extra||'';document.getElementById('sal-mw').classList.add('on');}
 function closeSalM(){document.getElementById('sal-mw').classList.remove('on');}
-function saveSalary(){salary.monthly=parseFloat(document.getElementById('sal-amt').value)||0;salary.extra=parseFloat(document.getElementById('sal-extra').value)||0;closeSalM();renderSalLbl();lsSave();showToast('บันทึกเงินเดือนแล้ว');rdDB();}
+function saveSalary(){salary.monthly=parseFloat(document.getElementById('sal-amt').value)||0;salary.extra=parseFloat(document.getElementById('sal-extra').value)||0;closeSalM();renderSalLbl();lsSave();showToast('บันทึกเงินเดือนแล้ว');}
 function renderSalLbl(){var el=document.getElementById('sal-lbl');if(el)el.textContent=f(salary.monthly)+(salary.extra?' + Freelance '+f(salary.extra):'');}
 
 // ====== CATEGORIES ======
@@ -2311,18 +2247,10 @@ function getFilteredTxs(){
   var q=(document.getElementById('tx-srch')&&document.getElementById('tx-srch').value||'').toLowerCase();
   var ftype=document.getElementById('tx-ftype')&&document.getElementById('tx-ftype').value||'';
   var fcat=document.getElementById('tx-fcat')&&document.getElementById('tx-fcat').value||'';
-  var fdateEl=document.getElementById('tx-fdate');
-  var fdate=fdateEl?fdateEl.value:'all';
   return TXS.filter(function(t){
     if(ftype&&t.tp!==ftype)return false;
     if(fcat&&t.cat!==fcat)return false;
     if(q&&!(t.note.toLowerCase().includes(q)||t.cat.toLowerCase().includes(q)))return false;
-    // date filter - ถ้าเลือก "รอบนี้" ให้ filter ตาม dbCUR
-    if(fdate==='cycle'&&dbCUR&&CPD[dbCUR]){
-      var r=gcr(dbCUR);
-      var td=parseDate(t.dt);
-      if(r&&r.s&&r.e&&(td<r.s||td>r.e))return false;
-    }
     return true;
   });
 }
@@ -2630,18 +2558,15 @@ function clearAllData(){if(!confirm('ล้างรายการทั้ง�
 function confirmClearAll(){
   if(!confirm('⚠️ ยืนยันครั้งที่ 1\n\nล้างข้อมูลรายการทั้งหมด?\nการกระทำนี้ไม่สามารถกู้คืนได้'))return;
   if(!confirm('⚠️ ยืนยันครั้งที่ 2\n\nแน่ใจแล้วหรือ? ข้อมูลทุกรายการจะหายไปถาวร'))return;
-  var typed=prompt('พิมพ์คำว่า "ลบข้อมูล" เพื่อยืนยัน');
-  if(typed!=='ลบข้อมูล'){showToast('ยกเลิกการลบ');return;}
-  // เก็บ ids ก่อนล้าง
-  var txIds=TXS.map(function(t){return t.id;});
-  var goalIds=GOALS.map(function(g){return g.id;});
-  TXS=[];GOALS=[];BSD={};
+  var typed = prompt('พิมพ์คำว่า "ลบข้อมูล" เพื่อยืนยัน');
+  if(typed !== 'ลบข้อมูล'){showToast('ยกเลิกการลบ');return;}
+  TXS=[];GOALS=[];lsSave();
   if(AuthManager.getUser()){
     SyncManager.setSyncDot('ing');
-    var tasks=[];
-    txIds.forEach(function(id){tasks.push(DatabaseService.deleteTransaction(id).catch(function(){}));});
-    goalIds.forEach(function(id){tasks.push(DatabaseService.deleteGoal(id).catch(function(){}));});
-    Promise.all(tasks).then(function(){SyncManager.setSyncDot('ok');}).catch(function(){SyncManager.setSyncDot('err');});
+    // ลบจาก Firestore ด้วย
+    Promise.all(
+      TXS.map(function(t){return DatabaseService.deleteTransaction(t.id).catch(function(){});})
+    ).then(function(){ SyncManager.setSyncDot('ok'); });
   }
   refreshAll();
   showToast('🗑️ ล้างข้อมูลทั้งหมดแล้ว');
@@ -2791,7 +2716,7 @@ function renderGoals(){
   }
   el.innerHTML=GOALS.map(function(g){var cu=calcGC(g);var pct=Math.min(Math.round(cu/g.tg*100),100);var mo=g.mo>0?Math.ceil((g.tg-cu)/g.mo):'-';var ll=g.link==='savings'?'🔗 ออม':g.link==='invest'?'🔗 ลงทุน':'';return'<div class="gc"><div class="gt"><span>'+esc(g.nm)+'</span><div style="display:flex;gap:5px"><button class="btn-sm" data-gid="'+g.id+'" data-a="edit">✎</button><button class="btn-sm" data-gid="'+g.id+'" data-a="del" style="color:#D85A30">🗑</button></div></div><div class="gs">ตั้งต้น '+f(g.base||0)+' '+ll+' · เก็บต่อเดือน '+f(g.mo)+' · อีก ~'+mo+' เดือน</div><div class="gp"><div class="gpf" style="width:'+pct+'%;background:'+g.col+'"></div></div><div class="gn"><span style="font-size:14px;font-weight:700;color:'+g.col+'">'+f(cu)+'</span><span>'+pct+'% · เป้า '+f(g.tg)+'</span></div></div>';}).join('')+'<button style="display:flex;align-items:center;gap:5px;padding:10px;font-size:12px;border:.5px dashed var(--bdr);border-radius:var(--r);background:transparent;color:var(--t2);cursor:pointer;width:100%;justify-content:center;margin-top:4px" id="add-gb">+ เพิ่มเป้าหมายใหม่</button>';
   el.querySelectorAll('[data-a="edit"]').forEach(function(b){b.addEventListener('click',function(){openGM(this.getAttribute('data-gid'));});});
-  el.querySelectorAll('[data-a="del"]').forEach(function(b){b.addEventListener('click',async function(){var id=this.getAttribute('data-gid');if(!confirm('ลบเป้าหมายนี้?'))return;SyncManager.setSyncDot('ing');try{if(AuthManager.getUser())await DatabaseService.deleteGoal(id);}catch(e){showToast('⚠️ ลบไม่สำเร็จ');SyncManager.setSyncDot('err');return;}GOALS=GOALS.filter(function(g){return String(g.id)!==String(id);});lsSave();SyncManager.setSyncDot('ok');renderGoals();});});
+  el.querySelectorAll('[data-a="del"]').forEach(function(b){b.addEventListener('click',async function(){var id=parseInt(this.getAttribute('data-gid'));if(!confirm('ลบเป้าหมายนี้?'))return;SyncManager.setSyncDot('ing');try{if(AuthManager.getUser())await DatabaseService.deleteGoal(id);}catch(e){showToast('⚠️ ลบไม่สำเร็จ');SyncManager.setSyncDot('err');return;}GOALS=GOALS.filter(function(g){return g.id!==id;});lsSave();SyncManager.setSyncDot('ok');renderGoals();});});
   document.getElementById('add-gb').addEventListener('click',function(){openGM();});
 }
 function openGM(id){
@@ -3272,13 +3197,13 @@ function renderBS(){
       '<div style="text-align:right"><div class="bs-rv">'+f(cv)+'</div>'+
       (x.link&&g2!==0?'<div style="font-size:10px;color:'+(g2>0?'#1D9E75':'#D85A30')+'">'+(g2>0?'+':'')+f(g2)+'</div>':'')+'</div></div>';
   }).join(''):'<div style="padding:8px 12px;font-size:12px;color:var(--t3)">ยังไม่มีทรัพย์สิน กด + เพิ่มได้เลย</div>';
-  aL.querySelectorAll('.bs-row').forEach(function(row){row.addEventListener('click',function(){var id=this.getAttribute('data-id');var item=d.assets.find(function(x){return String(x.id)===String(id);});if(item)openBSD(item,'asset',yr);});});
+  aL.querySelectorAll('.bs-row').forEach(function(row){row.addEventListener('click',function(){var id=parseInt(this.getAttribute('data-id'));var item=d.assets.find(function(x){return x.id===id;});if(item)openBSD(item,'asset',yr);});});
 
   // Debt list
   document.getElementById('bs-dt').textContent=f(td);document.getElementById('bs-ds').textContent=f(td);
   var dL=document.getElementById('bs-dl');
   dL.innerHTML=d.debts.length?d.debts.map(function(x){var cv=calcBSV(x);return'<div class="bs-row" data-id="'+x.id+'"><div style="flex:1;min-width:0"><div class="bs-rn">'+esc(x.name)+'</div><div class="bs-rs">'+esc(x.cat)+(x.inst?' · '+esc(x.inst):'')+'</div></div><div class="bs-rv" style="color:#D85A30">'+f(cv)+'</div></div>';}).join(''):'<div style="padding:8px 12px;font-size:12px;color:var(--t3)">ไม่มีหนี้สิน 🎉</div>';
-  dL.querySelectorAll('.bs-row').forEach(function(row){row.addEventListener('click',function(){var id=this.getAttribute('data-id');var item=d.debts.find(function(x){return String(x.id)===String(id);});if(item)openBSD(item,'debt',yr);});}); 
+  dL.querySelectorAll('.bs-row').forEach(function(row){row.addEventListener('click',function(){var id=parseInt(this.getAttribute('data-id'));var item=d.debts.find(function(x){return x.id===id;});if(item)openBSD(item,'debt',yr);});});
   document.getElementById('bs-net').textContent=f(net);
 
   // Only render sub-tabs that have visible canvas (to avoid 0-size chart bug)
