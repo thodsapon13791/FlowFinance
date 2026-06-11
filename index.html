@@ -80,7 +80,7 @@ import{getFirestore,collection,doc,addDoc,setDoc,getDoc,getDocs,updateDoc,delete
 // ── Firebase Config ──────────────────────────────────────────
 const FB_CFG = {
   apiKey:            "AIzaSyDvgg4_oN8SLzTKMpqgGBoO-0bR3Ert3l0",
-  authDomain:        "flowfinancev1-9584d.firebaseapp.com",
+  authDomain:        "thodsapon13791.github.io",
   projectId:         "flowfinancev1-9584d",
   storageBucket:     "flowfinancev1-9584d.firebasestorage.app",
   messagingSenderId: "104788184166",
@@ -1113,8 +1113,7 @@ var AuthManager = {
     var provider = new window._FB.GoogleAuthProvider();
     provider.addScope('email');
     provider.addScope('profile');
-    // ใช้ redirect แทน popup เพื่อหลีกเลี่ยงปัญหา COOP บน GitHub Pages
-    await window._FB.signInWithRedirect(window._FB.auth, provider);
+    await window._FB.signInWithPopup(window._FB.auth, provider);
   },
 
   getSession: async function() {
@@ -1770,23 +1769,9 @@ async function bootApp() {
     return;
   }
 
-  // ── ป้องกัน race condition: รอ getRedirectResult ก่อนค่อย showAuth ──
-  var _redirectHandled = false;
-  var _redirectUser = null;
-  try {
-    var redirectResult = await window._FB.getRedirectResult(window._FB.auth);
-    if (redirectResult && redirectResult.user) {
-      _redirectUser = redirectResult.user;
-    }
-  } catch(e) {
-    console.warn('getRedirectResult error:', e.message);
-  }
-  _redirectHandled = true;
-
   AuthManager.onAuthChange(async function(event, session) {
     var user = session ? session.user : null;
     if (user) {
-      // ถ้า user เข้ามาซ้ำและโหลดข้อมูลแล้ว ไม่ต้อง reload ซ้ำ
       if (AuthManager.getUser() && AuthManager.getUser().uid === user.uid) return;
       AuthManager.setUser(user);
       updateNavUser(user);
@@ -1816,9 +1801,6 @@ async function bootApp() {
       if (userName) { var sn=document.getElementById('set-name'); if(sn) sn.value=userName; }
       goP('db', document.querySelector('.ni'));
     } else {
-      // แสดง login เฉพาะเมื่อ redirect จัดการเสร็จแล้วและไม่มี user จริงๆ
-      if (!_redirectHandled) return;
-      if (_redirectUser) return; // มี redirect user กำลังจะมา ไม่ต้อง showAuth
       AuthManager.setUser(null);
       updateNavUser(null);
       showAuth();
@@ -1826,7 +1808,7 @@ async function bootApp() {
   });
 
   var session = await AuthManager.getSession();
-  if (!session && !_redirectUser) { showAuth(); }
+  if (!session) { showAuth(); }
 }
 
 // ====== DATE ======
