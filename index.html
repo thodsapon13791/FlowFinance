@@ -1750,7 +1750,7 @@ async function bootApp() {
       }, 100);
     });
   };
-  await waitFB(50); // รอ 5 วิ
+  await waitFB(100); // รอ 10 วิ (เพิ่มเผื่อ network ช้าบน GitHub Pages)
 
   AuthManager.init();
 
@@ -1761,10 +1761,10 @@ async function bootApp() {
   if (userName) { var sn=document.getElementById('set-name'); if(sn) sn.value=userName; }
 
   if (!AuthManager.isConfigured()) {
-    // Firebase ไม่ได้ config — แสดง app เลยแบบ offline
-    dbQR('month', document.getElementById('db-qm'));
+    // Firebase โหลดไม่สำเร็จ — แสดงหน้า Login พร้อมแจ้งเตือน
+    showAuth();
     SyncManager.setSyncDot('err');
-    goP('db', document.querySelector('.ni'));
+    showToast('⚠️ Firebase โหลดไม่สำเร็จ กรุณารีเฟรชหน้า');
     return;
   }
 
