@@ -1572,45 +1572,43 @@ async function signOut() {
 }
 
 function updateNavUser(user) {
-  // ดึง user ล่าสุดจาก Firebase currentUser เสมอ (มี displayName/metadata ครบ)
   var fbUser = (window._FB && window._FB.auth && window._FB.auth.currentUser) || user;
-  var navU = document.getElementById('nav-user');
-  var soBtn = document.getElementById('sign-out-btn');
-  if (fbUser) {
-    navU.style.display = 'flex';
-    soBtn.style.display = 'block';
-    var nm = fbUser.displayName || fbUser.email || 'ผู้ใช้';
-    var em = fbUser.email || '';
+  if (!fbUser) {
+    document.getElementById('nav-user').style.display='none';
+    document.getElementById('sign-out-btn').style.display='none';
+    return;
+  }
+  // รอให้ Firebase โหลด profile ครบ แล้วค่อย update
+  setTimeout(function(){
+    var u = (window._FB && window._FB.auth && window._FB.auth.currentUser) || fbUser;
+    var nm = u.displayName || u.email || 'ผู้ใช้';
+    var em = u.email || '';
     var av = (nm[0]||'U').toUpperCase();
+
+    document.getElementById('nav-user').style.display='flex';
+    document.getElementById('sign-out-btn').style.display='block';
     document.getElementById('nav-email').textContent = nm;
     document.getElementById('nav-av').textContent = av;
-    // Settings page
-    var sAv=document.getElementById('set-av'); if(sAv) sAv.textContent=av;
+
+    var sAv=document.getElementById('set-av'); if(sAv){sAv.textContent=av;sAv.style.background='#1D9E75';}
     var sNm=document.getElementById('set-uname'); if(sNm) sNm.textContent=nm;
     var sEm=document.getElementById('set-uemail'); if(sEm) sEm.textContent=em;
-    // เริ่มใช้งาน
+
     var joined=document.getElementById('set-joined');
-    if(joined){
-      if(fbUser.metadata && fbUser.metadata.creationTime){
-        joined.textContent=new Date(fbUser.metadata.creationTime).toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
-      } else { joined.textContent='—'; }
-    }
-    // อัพเดทล่าสุด
+    if(joined) joined.textContent = u.metadata&&u.metadata.creationTime
+      ? new Date(u.metadata.creationTime).toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'})
+      : '—';
+
     var lastSync=document.getElementById('set-lastsync');
-    if(lastSync){
-      if(fbUser.metadata && fbUser.metadata.lastSignInTime){
-        lastSync.textContent=new Date(fbUser.metadata.lastSignInTime).toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
-      } else { lastSync.textContent='—'; }
-    }
-    // Dashboard greeting
-    var grEl=document.getElementById('db-greeting');
+    if(lastSync) lastSync.textContent = u.metadata&&u.metadata.lastSignInTime
+      ? new Date(u.metadata.lastSignInTime).toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})
+      : '—';
+
     var hr=new Date().getHours();
     var greet=hr<12?'อรุณสวัสดิ์':hr<17?'สวัสดีตอนบ่าย':'สวัสดีตอนเย็น';
+    var grEl=document.getElementById('db-greeting');
     if(grEl) grEl.textContent=greet+', '+nm+' 👋';
-  } else {
-    navU.style.display='none';
-    soBtn.style.display='none';
-  }
+  }, 500);
 }
 
 // lsSave — localStorage + schedule cloud settings sync
@@ -1894,37 +1892,31 @@ var isDark=true;
 function toggleTheme(){isDark=!isDark;applyT();lsSave();}
 function setTheme(m){isDark=(m==='dark');applyT();lsSave();}
 function applyT(){
-  document.getElementById('app').classList.toggle('L',!isDark);
+  var app=document.getElementById('app'); if(app) app.classList.toggle('L',!isDark);
   var ic=document.getElementById('ti'),lb=document.getElementById('tl');
-  if(isDark){ic.className='ti ti-moon';lb.textContent='โหมดมืด';}else{ic.className='ti ti-sun';lb.textContent='โหมดสว่าง';}
-  document.getElementById('set-dk').classList.toggle('on',isDark);
-  document.getElementById('set-lt').classList.toggle('on',!isDark);
-  if(document.getElementById('pg-db').classList.contains('on'))rdDB();
-  if(document.getElementById('pg-ana').classList.contains('on'))rAna();
+  if(ic) ic.className=isDark?'ti ti-moon':'ti ti-sun';
+  if(lb) lb.textContent=isDark?'โหมดมืด':'โหมดสว่าง';
+  var sdk=document.getElementById('set-dk'); if(sdk) sdk.classList.toggle('on',isDark);
+  var slt=document.getElementById('set-lt'); if(slt) slt.classList.toggle('on',!isDark);
+  var pdb=document.getElementById('pg-db'); if(pdb&&pdb.classList.contains('on')) rdDB();
+  var pan=document.getElementById('pg-ana'); if(pan&&pan.classList.contains('on')) rAna();
 }
 
 // ── refreshAll: เรียกหลังทุก action ที่แก้ข้อมูล ──────────
 function refreshAll() {
   lsSave();
   syncCAT();
-  var onDB  = document.getElementById('pg-db').classList.contains('on');
-  var onTX  = document.getElementById('pg-tx').classList.contains('on');
-  var onBUD = document.getElementById('pg-bud').classList.contains('on');
-  var onSAV = document.getElementById('pg-sav').classList.contains('on');
-  var onANA = document.getElementById('pg-ana').classList.contains('on');
-  var onBS  = document.getElementById('pg-bs').classList.contains('on');
-  var onSET = document.getElementById('pg-set').classList.contains('on');
-
-  if (onDB)  rdDB();
-  if (onTX)  { populateTxFilter(); setTxV(txV, null); }
-  if (onBUD) renderBud();
-  if (onSAV) renderGoals();
-  if (onANA) rAna();
-  if (onBS)  renderBS();
-  if (onSET) { renderSalLbl(); renderSetChips(); }
-
-  renderSalLbl(); // always update salary label in topnav
-  setTimeout(function() { renderIcons(document.getElementById('app')); }, 50);
+  var g=function(id){return document.getElementById(id);};
+  var on=function(id){var e=g(id);return e&&e.classList.contains('on');};
+  if(on('pg-db'))  rdDB();
+  if(on('pg-tx'))  { populateTxFilter(); setTxV(txV,null); }
+  if(on('pg-bud')) renderBud();
+  if(on('pg-sav')) renderGoals();
+  if(on('pg-ana')) rAna();
+  if(on('pg-bs'))  renderBS();
+  if(on('pg-set')) { renderSalLbl(); renderSetChips(); }
+  renderSalLbl();
+  setTimeout(function(){ renderIcons(document.getElementById('app')); }, 50);
 }
 
 // ====== PROFILE / SALARY ======
