@@ -109,6 +109,11 @@ window._FB = {
   serverTimestamp, writeBatch,
   col:_col, docRef:_doc
 };
+
+// ── เรียก bootApp หลัง Firebase พร้อมแน่นอน ──
+window.addEventListener('DOMContentLoaded', function() {
+  if (typeof bootApp === 'function') bootApp();
+});
 </script>
 <style>
 /* ── Auth screen ── */
@@ -1112,16 +1117,11 @@ var AuthManager = {
     var provider = new window._FB.GoogleAuthProvider();
     provider.addScope('email');
     provider.addScope('profile');
-    try {
-      // ลอง popup ก่อน
+    var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+      await window._FB.signInWithRedirect(window._FB.auth, provider);
+    } else {
       await window._FB.signInWithPopup(window._FB.auth, provider);
-    } catch(e) {
-      if (e.code === 'auth/popup-blocked' || e.code === 'auth/cancelled-popup-request') {
-        // popup ถูกบล็อก — ใช้ redirect แทน
-        await window._FB.signInWithRedirect(window._FB.auth, provider);
-      } else {
-        throw e;
-      }
     }
   },
 
@@ -1757,27 +1757,18 @@ async function saveBSI() {
 // bootApp — entry point
 // ════════════════════════════════════════════════════
 async function bootApp() {
-  // รอให้ Firebase module โหลดก่อน (max 5 วินาที)
-  var waitFB = function(n) {
-    return new Promise(function(res) {
-      var t = setInterval(function() {
-        if (window._FB || n-- <= 0) { clearInterval(t); res(); }
-      }, 100);
-    });
-  };
-  await waitFB(50); // รอ 5 วิ
-
+  // Firebase พร้อมแล้วแน่นอน (เรียกจาก module script)
   AuthManager.init();
 
-  // ตรวจสอบ redirect result (กรณี Google Sign-In แบบ redirect)
+  // ตรวจสอบ redirect result (mobile Google Sign-In)
   if (window._FB) {
     try {
-      var redirectResult = await window._FB.getRedirectResult(window._FB.auth);
-      if (redirectResult && redirectResult.user) {
-        // login สำเร็จจาก redirect — onAuthStateChanged จะ handle ต่อเอง
-      }
+      await window._FB.getRedirectResult(window._FB.auth);
+      // ถ้า redirect สำเร็จ onAuthStateChanged จะ fire เองอัตโนมัติ
     } catch(e) {
-      if (e.code !== 'auth/no-auth-event') console.error('Redirect result error:', e);
+      if (e.code && e.code !== 'auth/no-auth-event' && e.code !== 'auth/null-user') {
+        console.error('Redirect error:', e.code);
+      }
     }
   }
 
@@ -3487,7 +3478,7 @@ document.addEventListener('click',function(e){
 });
 
 // ====== INIT ======
-bootApp();
+// bootApp ถูกเรียกจาก Firebase module script หลัง _FB พร้อมแล้ว
 </script>
 <script>
 // ── PWA Service Worker ──
