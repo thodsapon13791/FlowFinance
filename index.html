@@ -1738,7 +1738,7 @@ async function saveBSI() {
 // bootApp — entry point
 // ════════════════════════════════════════════════════
 async function bootApp() {
-  // รอให้ Firebase module โหลดก่อน
+  // รอให้ Firebase module โหลดก่อน (max 5 วินาที)
   var waitFB = function(n) {
     return new Promise(function(res) {
       var t = setInterval(function() {
@@ -1746,16 +1746,21 @@ async function bootApp() {
       }, 100);
     });
   };
-  await waitFB(30);
+  await waitFB(50); // รอ 5 วิ
 
   AuthManager.init();
 
+  // เตรียม UI พื้นฐานก่อนเสมอ
+  lsLoad(); applyT(); ensureFutureBuffer();
+  initBSYrSel(); renderDbDrop();
+  populateTxFilter(); renderSalLbl();
+  if (userName) { var sn=document.getElementById('set-name'); if(sn) sn.value=userName; }
+
   if (!AuthManager.isConfigured()) {
-    lsLoad(); applyT(); initBSYrSel(); renderDbDrop();
+    // Firebase ไม่ได้ config — แสดง app เลยแบบ offline
     dbQR('month', document.getElementById('db-qm'));
-    populateTxFilter(); renderSalLbl();
-    if (userName) document.getElementById('set-name').value = userName;
     SyncManager.setSyncDot('err');
+    goP('db', document.querySelector('.ni'));
     return;
   }
 
@@ -1768,33 +1773,33 @@ async function bootApp() {
       showLoader('กำลังโหลดข้อมูลของคุณ...');
       try {
         var all = await DatabaseService.loadAll();
-        TXS   = all.txs.length   ? all.txs   : TXS;
-        GOALS = all.goals.length  ? all.goals  : GOALS;
+        if (all.txs.length)   TXS   = all.txs;
+        if (all.goals.length) GOALS = all.goals;
         if (Object.keys(all.bs).length) BSD = all.bs;
         applySettings(all.settings);
+        syncCAT(); ensureFutureBuffer();
         lsSave();
         SyncManager.setSyncDot('ok');
       } catch(e) {
         console.error('loadAll failed:', e);
-        lsLoad();
         showToast('⚠️ โหลดข้อมูลจาก Cloud ไม่สำเร็จ ใช้ข้อมูล Local แทน');
         SyncManager.setSyncDot('err');
       }
       hideLoader();
-      applyT(); initBSYrSel(); renderDbDrop();
+      applyT(); ensureFutureBuffer(); initBSYrSel(); renderDbDrop();
       dbQR('month', document.getElementById('db-qm'));
       populateTxFilter(); renderSalLbl();
-      if (userName) document.getElementById('set-name').value = userName;
+      if (userName) { var sn=document.getElementById('set-name'); if(sn) sn.value=userName; }
       goP('db', document.querySelector('.ni'));
     } else {
       AuthManager.setUser(null);
       updateNavUser(null);
-      lsLoad(); applyT(); showAuth();
+      showAuth();
     }
   });
 
   var session = await AuthManager.getSession();
-  if (!session) { lsLoad(); applyT(); showAuth(); }
+  if (!session) { showAuth(); }
 }
 
 // ====== DATE ======
