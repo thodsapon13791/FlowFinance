@@ -192,7 +192,8 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg0);color:
 /* ── Top bar ── */
 .topnav{display:flex;align-items:center;background:var(--bg1);border-bottom:.5px solid var(--bdr);height:50px;flex-shrink:0;padding:0 .75rem;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch}
 .topnav::-webkit-scrollbar{display:none}
-.logo{font-size:15px;font-weight:700;color:var(--t1);white-space:nowrap;padding-right:12px;border-right:.5px solid var(--bdr);margin-right:8px;flex-shrink:0}
+.logo{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;color:var(--t1);white-space:nowrap;padding-right:12px;border-right:.5px solid var(--bdr);margin-right:8px;flex-shrink:0}
+.logo-img{width:28px;height:28px;border-radius:8px;display:block;flex-shrink:0}
 .logo em{color:#1D9E75;font-style:normal}
 .ni{display:flex;align-items:center;gap:5px;padding:6px 12px;font-size:12px;font-weight:500;color:var(--t2);cursor:pointer;border-radius:var(--r);white-space:nowrap;flex-shrink:0;border-bottom:2px solid transparent;transition:all .15s;user-select:none;min-width:max-content}
 .ni i{font-size:14px;flex-shrink:0}
@@ -617,7 +618,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg0);color:
 <div class="app" id="app">
 <!-- Top nav (desktop) -->
 <nav class="topnav">
-  <div class="logo">Flow<em>Finance</em></div>
+  <div class="logo"><img class="logo-img" src="icon-192.png" alt=""><span>Flow<em>Finance</em></span></div>
   <div class="ni on" onclick="goP('db',this)"><i class="ti ti-layout-dashboard"></i> Dashboard</div>
   <div class="ni" onclick="goP('tx',this)"><i class="ti ti-list"></i> รายการ</div>
   <div class="ni" onclick="goP('bud',this)"><i class="ti ti-target"></i> งบประมาณ</div>
@@ -1699,40 +1700,59 @@ function lsSave() {
 // ════════════════════════════════════════════════════
 // Transaction save/delete — ส่งตรงไป DB ทันที
 // ════════════════════════════════════════════════════
+var _isSaving = false;
+
 async function saveT() {
+  if (_isSaving) return; // ป้องกันกด Save ซ้ำ
   var amt = parseFloat(document.getElementById('iamt').value); if (!amt) return;
   var tx = {
-    id: eTxId||null, tp: curT,
+    id: eTxId || null, tp: curT,
     cat: document.getElementById('icat').value,
     note: document.getElementById('inote').value||'',
     amt: amt, dt: document.getElementById('idate').value,
     rec: document.getElementById('irec').checked||false
   };
+
+  _isSaving = true;
+  var saveBtn = document.querySelector('#mwrap .bsav');
+  if (saveBtn) saveBtn.disabled = true;
   SyncManager.setSyncDot('ing');
+
   try {
     if (AuthManager.getUser()) {
       if (navigator.onLine) {
+        // ✅ Save Firestore ก่อน — แล้วค่อย update local state
         tx = await DatabaseService.upsertTransaction(tx);
       } else {
-        tx.id = tx.id || Date.now();
+        // Offline — ใช้ UUID ไม่ใช้ Date.now() (ป้องกัน id ซ้ำ)
+        tx.id = tx.id || (typeof crypto!=='undefined'&&crypto.randomUUID ? crypto.randomUUID() : Date.now()+'_'+Math.random());
         OfflineQueue.add('upsertTx', tx);
       }
     } else {
-      tx.id = tx.id || Date.now();
+      tx.id = tx.id || (typeof crypto!=='undefined'&&crypto.randomUUID ? crypto.randomUUID() : Date.now()+'_'+Math.random());
     }
+
+    // อัพเดท local state หลัง Firestore สำเร็จ
     if (eTxId) {
       var idx = TXS.findIndex(function(x){ return String(x.id) === String(eTxId); });
       if (idx >= 0) TXS[idx] = tx; else TXS.push(tx);
     } else {
       TXS.push(tx);
     }
-    closeM(); lsSave(); showToast(eTxId?'แก้ไขแล้ว ✓':'บันทึกแล้ว ✓');
+
+    closeM();
+    lsSave();
     SyncManager.setSyncDot('ok');
+    showToast(eTxId ? '✅ แก้ไขแล้ว' : '✅ บันทึกแล้ว');
     refreshAll();
   } catch(e) {
     SyncManager.setSyncDot('err');
-    showToast('⚠️ บันทึกไม่สำเร็จ: ' + e.message);
-    console.error('saveT:', e);
+    showToast('❌ บันทึกไม่สำเร็จ — ' + (e.message||'กรุณาลองใหม่'));
+    console.error('saveT error:', e);
+    // ไม่ update local state เพราะ Firestore ยังไม่ได้บันทึก
+  } finally {
+    _isSaving = false;
+    if (saveBtn) saveBtn.disabled = false;
   }
 }
 
@@ -1921,17 +1941,25 @@ async function bootApp() {
       hideAuth();
       showLoader('กำลังโหลดข้อมูลของคุณ...');
       try {
+        // ✅ Firestore คือ source of truth เสมอ
+        // LocalStorage ใช้เป็น fallback เท่านั้น ไม่ merge กัน
         var all = await DatabaseService.loadAll();
-        if (all.txs.length)   TXS   = all.txs;
-        if (all.goals.length) GOALS = all.goals;
-        if (Object.keys(all.bs).length) BSD = all.bs;
+        // replace ทั้งหมดด้วยข้อมูลจาก Firestore
+        TXS   = all.txs   || [];
+        GOALS = all.goals || [];
+        if (Object.keys(all.bs||{}).length) BSD = all.bs;
         applySettings(all.settings);
         syncCAT(); ensureFutureBuffer();
+        // sync localStorage ให้ตรงกับ Firestore
         lsSave();
         SyncManager.setSyncDot('ok');
+        // flush offline queue ถ้ามี
+        OfflineQueue.flush();
       } catch(e) {
         console.error('loadAll failed:', e);
-        showToast('⚠️ โหลดข้อมูลจาก Cloud ไม่สำเร็จ ใช้ข้อมูล Local แทน');
+        // Offline fallback — โหลดจาก localStorage
+        lsLoadFull();
+        showToast('📵 ออฟไลน์ — แสดงข้อมูลที่ cache ไว้');
         SyncManager.setSyncDot('err');
       }
       hideLoader();
@@ -1984,10 +2012,11 @@ function lsLoad(){
     var raw=localStorage.getItem(LS_KEY);
     if(!raw)return false;
     var d=JSON.parse(raw);
-    if(d.TXS)TXS=d.TXS;
+    // ✅ โหลดเฉพาะ settings/prefs จาก localStorage
+    // ❌ ไม่โหลด TXS/GOALS/BSD จาก localStorage
+    //    เพราะ Firestore คือ source of truth
+    //    (ถ้า user ออฟไลน์ ค่อยใช้ offline fallback)
     if(d.BUDS)BUDS=d.BUDS;
-    if(d.GOALS)GOALS=d.GOALS;
-    if(d.BSD)BSD=d.BSD;
     if(d.CATS&&d.CATS.length)CATS=d.CATS;
     if(d.CAT)CAT=d.CAT;
     if(d.CPD_raw){Object.entries(d.CPD_raw).forEach(function(e){CPD[e[0]]=new Date(e[1]);});}
@@ -2011,6 +2040,20 @@ function lsLoad(){
     if(d.isDark!==undefined)isDark=d.isDark;
     return true;
   }catch(e){console.error('lsLoad error:',e);return false;}
+}
+
+// สำหรับ offline fallback เท่านั้น
+function lsLoadFull(){
+  try{
+    var raw=localStorage.getItem(LS_KEY);
+    if(!raw)return false;
+    var d=JSON.parse(raw);
+    if(d.TXS)TXS=d.TXS;
+    if(d.GOALS)GOALS=d.GOALS;
+    if(d.BSD)BSD=d.BSD;
+    lsLoad(); // โหลด settings ด้วย
+    return true;
+  }catch(e){return false;}
 }
 
 // ====== TOAST ======
