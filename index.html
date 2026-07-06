@@ -95,7 +95,7 @@ const FB_CFG = {
 const _fbApp  = initializeApp(FB_CFG);
 const _fbAuth = getAuth(_fbApp);
 const _fbDb   = getFirestore(_fbApp);
-const APP_VERSION = '45.1.0';
+const APP_VERSION = '45.2.0';
 
 
 // ══════════════════════════════════════════════════════════════════
@@ -2528,7 +2528,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg0);color:
   <!-- เกี่ยวกับ -->
   <div class="card" style="margin-top:10px;margin-bottom:20px">
     <div style="font-size:12px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:.75rem">เกี่ยวกับ</div>
-    <div class="set-row"><div><div class="set-label">FlowFinance <span id="app-version">v45.1.0</span></div><div style="font-size:11px;color:var(--t3);margin-top:2px">Personal Finance App — THB · Firebase Cloud Sync</div></div></div>
+    <div class="set-row"><div><div class="set-label">FlowFinance <span id="app-version">v45.2.0</span></div><div style="font-size:11px;color:var(--t3);margin-top:2px">Personal Finance App — THB · Firebase Cloud Sync</div></div></div>
   </div>
 </div>
 </div></div>
@@ -3069,8 +3069,9 @@ async function doAuth() {
   // Client-side validation
   errEl.textContent = '';
   if (!email || !isValidEmail(email)) { errEl.textContent='กรุณากรอกอีเมลให้ถูกต้อง'; validateEmail(); return; }
-  if (!pwd || pwd.length < 8) { errEl.textContent='รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'; validatePwd(); return; }
+  if (!pwd) { errEl.textContent='กรุณากรอกรหัสผ่าน'; return; }
   if (_authMode==='up') {
+    if (pwd.length < 8) { errEl.textContent='รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'; validatePwd(); return; }
     var pwd2 = document.getElementById('a-pwd2').value;
     if (pwd !== pwd2) { errEl.textContent='รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน'; validatePwd2(); return; }
   }
